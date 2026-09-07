@@ -30,6 +30,14 @@
 
 	function init(root) {
 		var config = window.MCFRecipes || {};
+		var configAttribute = root.getAttribute('data-mcf-config');
+		if (configAttribute) {
+			try {
+				config = JSON.parse(configAttribute);
+			} catch (error) {
+				// Keep the global configuration as a fallback for older cached markup.
+			}
+		}
 		var grid = root.querySelector('[data-mcf-recipe-grid]');
 		var detail = root.querySelector('[data-mcf-recipe-detail]');
 		var status = root.querySelector('.mcf-recipe-status');
