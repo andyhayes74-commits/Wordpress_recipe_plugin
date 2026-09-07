@@ -119,7 +119,7 @@
 					state.pages = Number(data.pages || 1);
 					grid.insertAdjacentHTML('beforeend', (data.recipes || []).map(card).join(''));
 					loadMore.hidden = state.page >= state.pages;
-					setStatus(data.total ? data.total + ' recipe' + (data.total === 1 ? '' : 's') : config.i18n.noResults);
+					setStatus(data.total ? data.total + ' ' + (data.total === 1 ? (config.i18n.resultsSingular || 'recipe found') : (config.i18n.resultsPlural || 'recipes found')) : config.i18n.noResults);
 				})
 				.catch(function () {
 					setStatus(config.i18n.noResults);
@@ -135,17 +135,17 @@
 				metadata.push(esc(recipe.cuisine.join(' · ')));
 			}
 			if (recipe.prep_time) {
-				metadata.push('Prep: ' + esc(recipe.prep_time));
+				metadata.push(esc(config.i18n.prepLabel || 'Prep:') + ' ' + esc(recipe.prep_time));
 			}
 			if (recipe.cook_time) {
-				metadata.push('Cook: ' + esc(recipe.cook_time));
+				metadata.push(esc(config.i18n.cookLabel || 'Cook:') + ' ' + esc(recipe.cook_time));
 			}
 			if (recipe.servings) {
-				metadata.push(esc(recipe.servings));
+				metadata.push(esc(config.i18n.servingsLabel || 'Servings:') + ' ' + esc(recipe.servings));
 			}
 			return '<div class="mcf-recipe-detail__toolbar">' +
-				'<button type="button" class="mcf-recipe-link" data-mcf-close>← Back to recipes</button>' +
-				'<span class="mcf-recipe-detail__badge">' + (recipe.ai_adapted ? 'AI-adapted' : 'Recipe') + '</span>' +
+				'<button type="button" class="mcf-recipe-link" data-mcf-close>← ' + esc(config.i18n.backToRecipes || 'Back to recipes') + '</button>' +
+				'<span class="mcf-recipe-detail__badge">' + esc(recipe.ai_adapted ? (config.i18n.aiAdaptedBadge || 'AI-adapted') : (config.i18n.recipeBadge || 'Recipe')) + '</span>' +
 				'</div>' +
 				'<div class="mcf-recipe-detail__content">' +
 				(image ? '<div class="mcf-recipe-detail__image">' + image + '</div>' : '') +
@@ -153,11 +153,11 @@
 				'<h2>' + esc(recipe.title) + '</h2>' +
 				'<div class="mcf-recipe-detail__meta">' + metadata.join(' · ') + '</div>' +
 				'<p>' + esc(recipe.description || '') + '</p>' +
-				'<h3>Ingredients</h3>' + list(recipe.ingredients, 'mcf-recipe-list') +
-				'<h3>Method</h3>' + list(recipe.method, 'mcf-recipe-steps') +
-				(recipe.allergens ? '<div class="mcf-recipe-callout"><strong>Allergen information</strong><br>' + esc(recipe.allergens) + '</div>' : '') +
-				(recipe.storage ? '<div class="mcf-recipe-callout"><strong>Storage and reheating</strong><br>' + esc(recipe.storage) + '</div>' : '') +
-				(recipe.warnings && recipe.warnings.length ? '<div class="mcf-recipe-callout mcf-recipe-callout--warning"><strong>AI adaptation notes</strong>' + list(recipe.warnings, 'mcf-recipe-list') + '</div>' : '') +
+				'<h3>' + esc(config.i18n.ingredientsHeading || 'Ingredients') + '</h3>' + list(recipe.ingredients, 'mcf-recipe-list') +
+				'<h3>' + esc(config.i18n.methodHeading || 'Method') + '</h3>' + list(recipe.method, 'mcf-recipe-steps') +
+				(recipe.allergens ? '<div class="mcf-recipe-callout"><strong>' + esc(config.i18n.allergenHeading || 'Allergen information') + '</strong><br>' + esc(recipe.allergens) + '</div>' : '') +
+				(recipe.storage ? '<div class="mcf-recipe-callout"><strong>' + esc(config.i18n.storageHeading || 'Storage and reheating') + '</strong><br>' + esc(recipe.storage) + '</div>' : '') +
+				(recipe.warnings && recipe.warnings.length ? '<div class="mcf-recipe-callout mcf-recipe-callout--warning"><strong>' + esc(config.i18n.adaptationNotesHeading || 'AI adaptation notes') + '</strong>' + list(recipe.warnings, 'mcf-recipe-list') + '</div>' : '') +
 				'<div class="mcf-recipe-detail__actions">' +
 				'<button type="button" class="mcf-recipe-button mcf-recipe-button--green" data-mcf-adapt>' + esc(config.i18n.adaptRecipe) + '</button>' +
 				'<button type="button" class="mcf-recipe-button mcf-recipe-button--outline" data-mcf-print>' + esc(config.i18n.printRecipe) + '</button>' +

@@ -1,14 +1,19 @@
 .mcf-recipe-library {
-	--mcf-orange: #f68f39;
-	--mcf-green: #246b36;
-	--mcf-olive: #879b38;
-	--mcf-cream: #fffaf0;
-	--mcf-ink: #173d27;
+	--mcf-orange: var(--mcf-accent, #f68f39);
+	--mcf-green: var(--mcf-heading-color, #246b36);
+	--mcf-olive: var(--mcf-olive-color, #879b38);
+	--mcf-cream: var(--mcf-page-background, #fffaf0);
+	--mcf-ink: var(--mcf-body-color, #173d27);
 	max-width: 1180px;
 	margin: 0 auto;
 	padding: clamp(24px, 5vw, 64px) clamp(16px, 3vw, 32px);
 	color: var(--mcf-ink);
-	font-family: inherit;
+	font-family: var(--mcf-font-family, inherit);
+	font-size: var(--mcf-base-font-size, 1rem);
+	font-weight: var(--mcf-body-weight, 400);
+	line-height: var(--mcf-line-height, 1.5);
+	text-align: var(--mcf-text-align, left);
+	background: var(--mcf-page-background, #fffaf0);
 }
 
 .mcf-recipe-library *,
@@ -34,11 +39,12 @@
 .mcf-recipe-library h2,
 .mcf-recipe-library h3 {
 	color: var(--mcf-green);
+	font-weight: var(--mcf-heading-weight, 800);
 }
 
 .mcf-recipe-library__intro h2 {
 	margin: 0 0 12px;
-	font-size: clamp(2rem, 5vw, 4rem);
+	font-size: var(--mcf-heading-font-size, clamp(2rem, 5vw, 4rem));
 	line-height: 1.05;
 }
 
@@ -56,7 +62,7 @@
 .mcf-recipe-search input,
 .mcf-recipe-filters select {
 	min-height: 50px;
-	border: 2px solid #d9dfd0;
+	border: 2px solid var(--mcf-border-color, #d9dfd0);
 	border-radius: 999px;
 	background: #fff;
 	color: var(--mcf-ink);
@@ -130,9 +136,9 @@
 
 .mcf-recipe-card {
 	overflow: hidden;
-	border: 1px solid #dce3d6;
-	border-radius: 18px;
-	background: #fff;
+	border: 1px solid var(--mcf-border-color, #dce3d6);
+	border-radius: var(--mcf-corner-radius, 18px);
+	background: var(--mcf-card-background, #fff);
 	box-shadow: 0 8px 24px rgba(36, 107, 54, .1);
 }
 
@@ -162,7 +168,7 @@
 
 .mcf-recipe-card__body h3 {
 	margin: 5px 0 8px;
-	font-size: 1.25rem;
+	font-size: var(--mcf-card-title-size, 1.25rem);
 	line-height: 1.1;
 }
 
@@ -237,9 +243,9 @@
 
 .mcf-recipe-detail {
 	margin-top: 34px;
-	border: 1px solid #d8e2d4;
-	border-radius: 22px;
-	background: var(--mcf-cream);
+	border: 1px solid var(--mcf-border-color, #d8e2d4);
+	border-radius: var(--mcf-corner-radius, 22px);
+	background: var(--mcf-detail-background, var(--mcf-cream));
 	box-shadow: 0 12px 35px rgba(36, 107, 54, .12);
 	padding: clamp(18px, 4vw, 34px);
 }
@@ -288,7 +294,7 @@
 .mcf-recipe-detail__copy h2 {
 	margin: 0 0 8px;
 	color: var(--mcf-green);
-	font-size: clamp(1.8rem, 4vw, 3rem);
+	font-size: var(--mcf-detail-title-size, clamp(1.8rem, 4vw, 3rem));
 	line-height: 1.05;
 }
 

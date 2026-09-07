@@ -18,11 +18,126 @@ class MCF_Recipe_Admin {
 		return array(
 			'openai_api_key' => '',
 			'openai_model'   => 'gpt-5-mini',
+			'appearance'     => self::appearance_defaults(),
+			'text'           => self::text_defaults(),
+		);
+	}
+
+	public static function appearance_defaults() {
+		return array(
+			'font_family'        => 'system',
+			'base_font_size'     => '16px',
+			'heading_font_size'  => '42px',
+			'card_title_size'    => '20px',
+			'detail_title_size'  => '34px',
+			'line_height'        => '1.5',
+			'body_weight'        => '400',
+			'heading_weight'     => '800',
+			'text_align'         => 'left',
+			'body_color'         => '#173d27',
+			'heading_color'      => '#246b36',
+			'accent_color'       => '#f68f39',
+			'olive_color'        => '#879b38',
+			'page_background'    => '#fffaf0',
+			'card_background'    => '#ffffff',
+			'detail_background'  => '#fffaf0',
+			'border_color'       => '#dce3d6',
+			'corner_radius'      => '18px',
+		);
+	}
+
+	public static function text_defaults() {
+		return array(
+			'eyebrow'                 => 'Waste less, share more',
+			'intro_heading'           => 'Recipes & ideas for surplus food',
+			'intro_text'              => 'Find practical recipes for the ingredients you have available.',
+			'search_label'            => 'Search recipes or ingredients',
+			'search_placeholder'      => 'What ingredient do you have?',
+			'search_button'           => 'Search',
+			'filters_label'           => 'Recipe filters',
+			'cuisine_label'           => 'Cuisine',
+			'all_cuisines'            => 'All cuisines',
+			'dietary_label'           => 'Dietary',
+			'all_dietary'             => 'All dietary types',
+			'loading'                 => 'Loading recipes…',
+			'no_results'              => 'No recipes matched those choices.',
+			'results_singular'        => 'recipe found',
+			'results_plural'          => 'recipes found',
+			'load_more'               => 'Load more recipes',
+			'view_recipe'             => 'View recipe',
+			'back_to_recipes'         => 'Back to recipes',
+			'recipe_badge'            => 'Recipe',
+			'ai_adapted_badge'        => 'AI-adapted',
+			'prep_label'              => 'Prep:',
+			'cook_label'              => 'Cook:',
+			'servings_label'          => 'Servings:',
+			'ingredients_heading'     => 'Ingredients',
+			'method_heading'          => 'Method',
+			'allergen_heading'        => 'Allergen information',
+			'storage_heading'         => 'Storage and reheating',
+			'adaptation_notes_heading'=> 'AI adaptation notes',
+			'adapt_recipe'            => 'Modify with AI',
+			'print_recipe'            => 'Print / save PDF',
+			'adapt_prompt'            => 'How would you like to adapt this recipe?',
+			'adapt_loading'           => 'Adapting recipe…',
+			'adapt_error'             => 'The recipe could not be adapted right now. Please try again later.',
 		);
 	}
 
 	public static function settings() {
-		return wp_parse_args( get_option( self::OPTION, array() ), self::defaults() );
+		$settings = wp_parse_args( get_option( self::OPTION, array() ), self::defaults() );
+		$settings['appearance'] = wp_parse_args( isset( $settings['appearance'] ) && is_array( $settings['appearance'] ) ? $settings['appearance'] : array(), self::appearance_defaults() );
+		$settings['text']       = wp_parse_args( isset( $settings['text'] ) && is_array( $settings['text'] ) ? $settings['text'] : array(), self::text_defaults() );
+		return $settings;
+	}
+
+	public static function display_settings() {
+		$settings = self::settings();
+		return array(
+			'appearance' => $settings['appearance'],
+			'text'       => $settings['text'],
+		);
+	}
+
+	public static function display_text() {
+		return self::settings()['text'];
+	}
+
+	public static function display_style() {
+		$appearance = self::settings()['appearance'];
+		$fonts      = array(
+			'system'    => 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+			'arial'     => 'Arial, Helvetica, sans-serif',
+			'georgia'   => 'Georgia, "Times New Roman", serif',
+			'trebuchet' => '"Trebuchet MS", Arial, sans-serif',
+			'verdana'   => 'Verdana, Arial, sans-serif',
+			'courier'   => '"Courier New", Courier, monospace',
+		);
+		$variables = array(
+			'--mcf-font-family'       => isset( $fonts[ $appearance['font_family'] ] ) ? $fonts[ $appearance['font_family'] ] : $fonts['system'],
+			'--mcf-base-font-size'    => $appearance['base_font_size'],
+			'--mcf-heading-font-size' => $appearance['heading_font_size'],
+			'--mcf-card-title-size'   => $appearance['card_title_size'],
+			'--mcf-detail-title-size' => $appearance['detail_title_size'],
+			'--mcf-line-height'       => $appearance['line_height'],
+			'--mcf-body-weight'       => $appearance['body_weight'],
+			'--mcf-heading-weight'    => $appearance['heading_weight'],
+			'--mcf-text-align'        => $appearance['text_align'],
+			'--mcf-body-color'        => $appearance['body_color'],
+			'--mcf-heading-color'     => $appearance['heading_color'],
+			'--mcf-accent'            => $appearance['accent_color'],
+			'--mcf-olive'             => $appearance['olive_color'],
+			'--mcf-page-background'   => $appearance['page_background'],
+			'--mcf-card-background'   => $appearance['card_background'],
+			'--mcf-detail-background' => $appearance['detail_background'],
+			'--mcf-border-color'      => $appearance['border_color'],
+			'--mcf-corner-radius'     => $appearance['corner_radius'],
+		);
+		$output = array();
+		foreach ( $variables as $property => $value ) {
+			$output[] = $property . ':' . sanitize_text_field( $value );
+		}
+		return implode( ';', $output );
 	}
 
 	public static function get_openai_key() {
@@ -94,24 +209,188 @@ class MCF_Recipe_Admin {
 			'mcf-recipe-settings',
 			'mcf_recipe_ai_section'
 		);
+		add_settings_section(
+			'mcf_recipe_appearance_section',
+			__( 'Recipe library appearance', 'marcham-recipe-plugin' ),
+			function () {
+				echo '<p>' . esc_html__( 'Control the typography, colours and spacing without editing CSS. These settings apply to every [mcf_recipes] library on the site.', 'marcham-recipe-plugin' ) . '</p>';
+			},
+			'mcf-recipe-settings'
+		);
+		add_settings_field(
+			'appearance',
+			__( 'Formatting options', 'marcham-recipe-plugin' ),
+			array( __CLASS__, 'appearance_fields' ),
+			'mcf-recipe-settings',
+			'mcf_recipe_appearance_section'
+		);
+		add_settings_section(
+			'mcf_recipe_text_section',
+			__( 'Visitor-facing text', 'marcham-recipe-plugin' ),
+			function () {
+				echo '<p>' . esc_html__( 'Every label and instruction shown by the recipe library can be changed here. Leave a field blank if you want that item hidden where supported.', 'marcham-recipe-plugin' ) . '</p>';
+			},
+			'mcf-recipe-settings'
+		);
+		add_settings_field(
+			'text',
+			__( 'Text labels and messages', 'marcham-recipe-plugin' ),
+			array( __CLASS__, 'text_fields' ),
+			'mcf-recipe-settings',
+			'mcf_recipe_text_section'
+		);
 	}
 
 	public static function sanitize_settings( $input ) {
 		$current = self::settings();
 		$input   = is_array( $input ) ? $input : array();
 		$key     = isset( $input['openai_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $input['openai_api_key'] ) : '';
+		$appearance_input = isset( $input['appearance'] ) && is_array( $input['appearance'] ) ? $input['appearance'] : array();
+		$text_input       = isset( $input['text'] ) && is_array( $input['text'] ) ? $input['text'] : array();
+		$appearance       = self::sanitize_appearance( $appearance_input, $current['appearance'] );
+		$text             = self::sanitize_text_settings( $text_input, $current['text'] );
 
 		return array(
 			'openai_api_key' => '' !== trim( $key ) ? sanitize_text_field( $key ) : $current['openai_api_key'],
 			'openai_model'   => isset( $input['openai_model'] ) ? sanitize_text_field( $input['openai_model'] ) : self::defaults()['openai_model'],
+			'appearance'     => $appearance,
+			'text'           => $text,
 		);
+	}
+
+	public static function appearance_fields() {
+		$appearance = self::settings()['appearance'];
+		$font_options = array(
+			'system'    => 'System sans-serif',
+			'arial'     => 'Arial',
+			'georgia'   => 'Georgia',
+			'trebuchet' => 'Trebuchet MS',
+			'verdana'   => 'Verdana',
+			'courier'   => 'Courier New',
+		);
+		$weight_options = array( '400' => 'Normal', '500' => 'Medium', '600' => 'Semi-bold', '700' => 'Bold', '800' => 'Extra-bold' );
+		$select = static function ( $name, $value, $options ) {
+			$html = '<select name="' . esc_attr( self::OPTION . '[appearance][' . $name . ']' ) . '">';
+			foreach ( $options as $key => $label ) {
+				$html .= '<option value="' . esc_attr( $key ) . '" ' . selected( $value, $key, false ) . '>' . esc_html( $label ) . '</option>';
+			}
+			return $html . '</select>';
+		};
+		$input = static function ( $name, $value, $placeholder = '' ) {
+			return '<input class="regular-text" type="text" name="' . esc_attr( self::OPTION . '[appearance][' . $name . ']' ) . '" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr( $placeholder ) . '">';
+		};
+		?>
+		<div class="mcf-settings-fields">
+			<p><label><strong><?php esc_html_e( 'Font family', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $select( 'font_family', $appearance['font_family'], $font_options ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Base text size', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'base_font_size', $appearance['base_font_size'], '16px' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Main heading size', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'heading_font_size', $appearance['heading_font_size'], '42px' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Recipe card title size', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'card_title_size', $appearance['card_title_size'], '20px' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Recipe detail title size', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'detail_title_size', $appearance['detail_title_size'], '34px' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Line height', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'line_height', $appearance['line_height'], '1.5' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Body weight', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $select( 'body_weight', $appearance['body_weight'], $weight_options ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Heading weight', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $select( 'heading_weight', $appearance['heading_weight'], $weight_options ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Text alignment', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $select( 'text_align', $appearance['text_align'], array( 'left' => 'Left', 'center' => 'Centre', 'right' => 'Right' ) ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Body colour', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'body_color', $appearance['body_color'], '#173d27' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Heading colour', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'heading_color', $appearance['heading_color'], '#246b36' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Accent colour', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'accent_color', $appearance['accent_color'], '#f68f39' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Secondary/olive colour', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'olive_color', $appearance['olive_color'], '#879b38' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Page background', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'page_background', $appearance['page_background'], '#fffaf0' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Recipe card background', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'card_background', $appearance['card_background'], '#ffffff' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Recipe detail background', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'detail_background', $appearance['detail_background'], '#fffaf0' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Border colour', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'border_color', $appearance['border_color'], '#dce3d6' ); ?></label></p>
+			<p><label><strong><?php esc_html_e( 'Corner radius', 'marcham-recipe-plugin' ); ?></strong><br><?php echo $input( 'corner_radius', $appearance['corner_radius'], '18px' ); ?></label></p>
+		</div>
+		<p class="description"><?php esc_html_e( 'Sizes accept px, rem, em, %, vw or vh. Colours must be hex values such as #f68f39.', 'marcham-recipe-plugin' ); ?></p>
+		<?php
+	}
+
+	public static function text_fields() {
+		$text = self::settings()['text'];
+		$groups = array(
+			'Library introduction' => array( 'eyebrow', 'intro_heading', 'intro_text' ),
+			'Search and filters' => array( 'search_label', 'search_placeholder', 'search_button', 'filters_label', 'cuisine_label', 'all_cuisines', 'dietary_label', 'all_dietary' ),
+			'Cards and recipe details' => array( 'loading', 'no_results', 'results_singular', 'results_plural', 'load_more', 'view_recipe', 'back_to_recipes', 'recipe_badge', 'ai_adapted_badge', 'prep_label', 'cook_label', 'servings_label', 'ingredients_heading', 'method_heading', 'allergen_heading', 'storage_heading', 'adaptation_notes_heading' ),
+			'AI and print actions' => array( 'adapt_recipe', 'print_recipe', 'adapt_prompt', 'adapt_loading', 'adapt_error' ),
+		);
+		$labels = array(
+			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'adapt_recipe' => 'AI action button', 'print_recipe' => 'Print/PDF button', 'adapt_prompt' => 'AI prompt', 'adapt_loading' => 'AI loading message', 'adapt_error' => 'AI error message',
+		);
+		foreach ( $groups as $group => $keys ) {
+			echo '<h3>' . esc_html( $group ) . '</h3><div class="mcf-settings-fields">';
+			foreach ( $keys as $key ) {
+				$type = in_array( $key, array( 'intro_text', 'adapt_prompt', 'adapt_error' ), true ) ? 'textarea' : 'text';
+				if ( 'textarea' === $type ) {
+					printf( '<p><label><strong>%s</strong><br><textarea class="large-text" rows="3" name="%s">%s</textarea></label></p>', esc_html( $labels[ $key ] ), esc_attr( self::OPTION . '[text][' . $key . ']' ), esc_textarea( $text[ $key ] ) );
+				} else {
+					printf( '<p><label><strong>%s</strong><br><input class="regular-text" type="text" name="%s" value="%s"></label></p>', esc_html( $labels[ $key ] ), esc_attr( self::OPTION . '[text][' . $key . ']' ), esc_attr( $text[ $key ] ) );
+				}
+			}
+			echo '</div>';
+		}
+	}
+
+	private static function sanitize_appearance( $input, $current ) {
+		$defaults = self::appearance_defaults();
+		$input    = is_array( $input ) ? $input : array();
+		$current  = is_array( $current ) ? wp_parse_args( $current, $defaults ) : $defaults;
+		$fonts    = array( 'system', 'arial', 'georgia', 'trebuchet', 'verdana', 'courier' );
+		$weights  = array( '400', '500', '600', '700', '800' );
+		$align    = array( 'left', 'center', 'right' );
+		$font     = isset( $input['font_family'] ) ? sanitize_key( $input['font_family'] ) : $current['font_family'];
+		$body_weight = isset( $input['body_weight'] ) ? (string) $input['body_weight'] : (string) $current['body_weight'];
+		$heading_weight = isset( $input['heading_weight'] ) ? (string) $input['heading_weight'] : (string) $current['heading_weight'];
+		$text_align = isset( $input['text_align'] ) ? sanitize_key( $input['text_align'] ) : $current['text_align'];
+
+		$appearance = array(
+			'font_family'       => in_array( $font, $fonts, true ) ? $font : $current['font_family'],
+			'base_font_size'    => self::sanitize_css_length( isset( $input['base_font_size'] ) ? $input['base_font_size'] : $current['base_font_size'], $current['base_font_size'] ),
+			'heading_font_size' => self::sanitize_css_length( isset( $input['heading_font_size'] ) ? $input['heading_font_size'] : $current['heading_font_size'], $current['heading_font_size'] ),
+			'card_title_size'   => self::sanitize_css_length( isset( $input['card_title_size'] ) ? $input['card_title_size'] : $current['card_title_size'], $current['card_title_size'] ),
+			'detail_title_size' => self::sanitize_css_length( isset( $input['detail_title_size'] ) ? $input['detail_title_size'] : $current['detail_title_size'], $current['detail_title_size'] ),
+			'line_height'       => self::sanitize_line_height( isset( $input['line_height'] ) ? $input['line_height'] : $current['line_height'], $current['line_height'] ),
+			'body_weight'       => in_array( $body_weight, $weights, true ) ? $body_weight : $current['body_weight'],
+			'heading_weight'    => in_array( $heading_weight, $weights, true ) ? $heading_weight : $current['heading_weight'],
+			'text_align'        => in_array( $text_align, $align, true ) ? $text_align : $current['text_align'],
+		);
+		$colours = array( 'body_color', 'heading_color', 'accent_color', 'olive_color', 'page_background', 'card_background', 'detail_background', 'border_color' );
+		foreach ( $colours as $colour ) {
+			$value = isset( $input[ $colour ] ) ? sanitize_hex_color( $input[ $colour ] ) : sanitize_hex_color( $current[ $colour ] );
+			$appearance[ $colour ] = $value ?: $current[ $colour ];
+		}
+		$appearance['corner_radius'] = self::sanitize_css_length( isset( $input['corner_radius'] ) ? $input['corner_radius'] : $current['corner_radius'], $current['corner_radius'] );
+
+		return $appearance;
+	}
+
+	private static function sanitize_text_settings( $input, $current ) {
+		$defaults = self::text_defaults();
+		$input    = is_array( $input ) ? $input : array();
+		$current  = is_array( $current ) ? wp_parse_args( $current, $defaults ) : $defaults;
+		$text     = array();
+		foreach ( $defaults as $key => $default ) {
+			$text[ $key ] = isset( $input[ $key ] ) ? sanitize_textarea_field( $input[ $key ] ) : sanitize_textarea_field( $current[ $key ] );
+		}
+		return $text;
+	}
+
+	private static function sanitize_css_length( $value, $fallback = '' ) {
+		$value = trim( sanitize_text_field( (string) $value ) );
+		if ( preg_match( '/^(?:0|\d+(?:\.\d+)?)(?:px|rem|em|%|vw|vh|pt)?$/i', $value ) ) {
+			return $value;
+		}
+		return $fallback;
+	}
+
+	private static function sanitize_line_height( $value, $fallback = '1.5' ) {
+		$value = trim( sanitize_text_field( (string) $value ) );
+		return preg_match( '/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $value ) ? $value : $fallback;
 	}
 
 	public static function admin_assets( $hook ) {
 		if ( false !== strpos( $hook, 'mcf-recipe' ) ) {
 			wp_add_inline_style(
 				'wp-admin',
-				'.mcf-admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.mcf-admin-card{max-width:900px;background:#fff;border:1px solid #dcdcde;padding:20px}.mcf-key-status{color:#287c3c;font-weight:600}'
+				'.mcf-admin-grid,.mcf-settings-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.mcf-admin-grid p,.mcf-settings-fields p{margin:0 0 8px}.mcf-admin-card{max-width:900px;background:#fff;border:1px solid #dcdcde;padding:20px}.mcf-key-status{color:#287c3c;font-weight:600}'
 			);
 		}
 	}

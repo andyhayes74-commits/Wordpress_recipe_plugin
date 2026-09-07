@@ -1,4 +1,4 @@
-# WordPress Recipe Plugin
+# WordPress Recipe Plugin v0.2.0
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
@@ -16,8 +16,16 @@ The first working version includes:
 - In-page recipe detail panel
 - Server-side OpenAI recipe adaptation endpoint
 - Browser print / save-as-PDF output for the selected recipe
+- Settings-based typography, colours, spacing and corner-radius controls
+- Editable visitor-facing wording for the complete recipe-library interface
 
 This is an MVP. Recipes should be tested with a small CSV first and reviewed for allergens, storage advice and cooking instructions before publication.
+
+## Updating the existing plugin
+
+This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. Upload it as an update to the existing installation rather than activating a second copy.
+
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.2.0 ZIP and choose **Replace current with uploaded** if WordPress presents that option. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
 
 ## Installation and setup
 
@@ -27,6 +35,8 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 4. Enter the OpenAI API key and model for AI adaptation. The key is stored in WordPress settings and is used only server-side; it is never sent to the browser.
 5. Add recipes individually or use Recipe Library → Import CSV.
 6. Add [mcf_recipes] to an Elementor Shortcode widget.
+
+Open **Recipe Library → Settings** to change the public wording, font family, text sizes, weights, alignment, colours, backgrounds and corner radius. These settings apply to every `[mcf_recipes]` shortcode on the site.
 
 AI adaptation remains unavailable until an administrator enters an API key. The key must never be placed in an Elementor page, JavaScript file or public repository.
 

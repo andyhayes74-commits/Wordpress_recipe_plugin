@@ -111,6 +111,7 @@ class MCF_Recipe_Plugin {
 	}
 
 	public function shortcode() {
+		$text = MCF_Recipe_Admin::display_text();
 		wp_enqueue_style( 'mcf-recipes' );
 		wp_enqueue_script( 'mcf-recipes' );
 		wp_localize_script(
@@ -120,43 +121,56 @@ class MCF_Recipe_Plugin {
 				'restUrl' => esc_url_raw( rest_url( 'mcf-recipes/v1' ) ),
 				'perPage' => 8,
 				'i18n'    => array(
-					'loading'      => __( 'Loading recipes…', 'marcham-recipe-plugin' ),
-					'noResults'    => __( 'No recipes matched those choices.', 'marcham-recipe-plugin' ),
-					'loadMore'     => __( 'Load more recipes', 'marcham-recipe-plugin' ),
-					'viewRecipe'   => __( 'View recipe', 'marcham-recipe-plugin' ),
-					'adaptRecipe'  => __( 'Modify with AI', 'marcham-recipe-plugin' ),
-					'printRecipe'  => __( 'Print / save PDF', 'marcham-recipe-plugin' ),
-					'adaptPrompt'  => __( 'How would you like to adapt this recipe?', 'marcham-recipe-plugin' ),
-					'adaptLoading' => __( 'Adapting recipe…', 'marcham-recipe-plugin' ),
-					'adaptError'   => __( 'The recipe could not be adapted right now. Please try again later.', 'marcham-recipe-plugin' ),
+					'loading'               => $text['loading'],
+					'noResults'             => $text['no_results'],
+					'resultsSingular'       => $text['results_singular'],
+					'resultsPlural'         => $text['results_plural'],
+					'loadMore'              => $text['load_more'],
+					'viewRecipe'            => $text['view_recipe'],
+					'adaptRecipe'           => $text['adapt_recipe'],
+					'printRecipe'           => $text['print_recipe'],
+					'adaptPrompt'           => $text['adapt_prompt'],
+					'adaptLoading'          => $text['adapt_loading'],
+					'adaptError'            => $text['adapt_error'],
+					'backToRecipes'         => $text['back_to_recipes'],
+					'recipeBadge'           => $text['recipe_badge'],
+					'aiAdaptedBadge'        => $text['ai_adapted_badge'],
+					'prepLabel'             => $text['prep_label'],
+					'cookLabel'             => $text['cook_label'],
+					'servingsLabel'         => $text['servings_label'],
+					'ingredientsHeading'    => $text['ingredients_heading'],
+					'methodHeading'         => $text['method_heading'],
+					'allergenHeading'       => $text['allergen_heading'],
+					'storageHeading'        => $text['storage_heading'],
+					'adaptationNotesHeading'=> $text['adaptation_notes_heading'],
 				),
 			)
 		);
 
 		ob_start();
 		?>
-		<section class="mcf-recipe-library" aria-labelledby="mcf-recipe-library-title">
+		<section class="mcf-recipe-library" style="<?php echo esc_attr( MCF_Recipe_Admin::display_style() ); ?>" aria-labelledby="mcf-recipe-library-title">
 			<div class="mcf-recipe-library__intro">
-				<p class="mcf-recipe-library__eyebrow"><?php esc_html_e( 'Waste less, share more', 'marcham-recipe-plugin' ); ?></p>
-				<h2 id="mcf-recipe-library-title"><?php esc_html_e( 'Recipes & ideas for surplus food', 'marcham-recipe-plugin' ); ?></h2>
-				<p><?php esc_html_e( 'Find practical recipes for the ingredients you have available.', 'marcham-recipe-plugin' ); ?></p>
+				<p class="mcf-recipe-library__eyebrow"><?php echo esc_html( $text['eyebrow'] ); ?></p>
+				<h2 id="mcf-recipe-library-title"><?php echo esc_html( $text['intro_heading'] ); ?></h2>
+				<p><?php echo esc_html( $text['intro_text'] ); ?></p>
 			</div>
 			<form class="mcf-recipe-search" role="search">
-				<label class="screen-reader-text" for="mcf-recipe-search-input"><?php esc_html_e( 'Search recipes or ingredients', 'marcham-recipe-plugin' ); ?></label>
-				<input id="mcf-recipe-search-input" type="search" name="search" placeholder="<?php esc_attr_e( 'What ingredient do you have?', 'marcham-recipe-plugin' ); ?>" autocomplete="off">
-				<button type="submit"><?php esc_html_e( 'Search', 'marcham-recipe-plugin' ); ?></button>
+				<label class="screen-reader-text" for="mcf-recipe-search-input"><?php echo esc_html( $text['search_label'] ); ?></label>
+				<input id="mcf-recipe-search-input" type="search" name="search" placeholder="<?php echo esc_attr( $text['search_placeholder'] ); ?>" autocomplete="off">
+				<button type="submit"><?php echo esc_html( $text['search_button'] ); ?></button>
 			</form>
-			<div class="mcf-recipe-filters" aria-label="<?php esc_attr_e( 'Recipe filters', 'marcham-recipe-plugin' ); ?>">
-				<label><?php esc_html_e( 'Cuisine', 'marcham-recipe-plugin' ); ?>
-					<select data-mcf-filter="cuisine"><option value=""><?php esc_html_e( 'All cuisines', 'marcham-recipe-plugin' ); ?></option></select>
+			<div class="mcf-recipe-filters" aria-label="<?php echo esc_attr( $text['filters_label'] ); ?>">
+				<label><?php echo esc_html( $text['cuisine_label'] ); ?>
+					<select data-mcf-filter="cuisine"><option value=""><?php echo esc_html( $text['all_cuisines'] ); ?></option></select>
 				</label>
-				<label><?php esc_html_e( 'Dietary', 'marcham-recipe-plugin' ); ?>
-					<select data-mcf-filter="dietary"><option value=""><?php esc_html_e( 'All dietary types', 'marcham-recipe-plugin' ); ?></option></select>
+				<label><?php echo esc_html( $text['dietary_label'] ); ?>
+					<select data-mcf-filter="dietary"><option value=""><?php echo esc_html( $text['all_dietary'] ); ?></option></select>
 				</label>
 			</div>
 			<div class="mcf-recipe-status" role="status" aria-live="polite"></div>
 			<div class="mcf-recipe-grid" data-mcf-recipe-grid></div>
-			<button class="mcf-recipe-load-more" type="button" hidden><?php esc_html_e( 'Load more recipes', 'marcham-recipe-plugin' ); ?></button>
+			<button class="mcf-recipe-load-more" type="button" hidden><?php echo esc_html( $text['load_more'] ); ?></button>
 			<div class="mcf-recipe-detail" data-mcf-recipe-detail hidden tabindex="-1" aria-live="polite"></div>
 		</section>
 		<?php
