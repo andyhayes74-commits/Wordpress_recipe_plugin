@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Marcham Community Fridge Recipe Library
  * Description: Searchable recipe library with CSV import, in-page recipe viewing and optional AI adaptation.
- * Version: 0.2.5
+ * Version: 0.3.0
  * Author: Marcham Community Fridge
  * License: GPL-2.0-or-later
  * Text Domain: marcham-recipe-plugin
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MCF_RECIPE_VERSION', '0.2.5' );
+define( 'MCF_RECIPE_VERSION', '0.3.0' );
 define( 'MCF_RECIPE_FILE', __FILE__ );
 define( 'MCF_RECIPE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MCF_RECIPE_URL', plugin_dir_url( __FILE__ ) );
