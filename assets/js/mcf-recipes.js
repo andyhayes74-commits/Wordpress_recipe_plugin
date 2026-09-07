@@ -44,9 +44,10 @@
 			status.textContent = message || '';
 		}
 
-		function endpoint(path, params) {
+	function endpoint(path, params) {
 			var url = String(config.restUrl || '').replace(/\/$/, '') + path;
-			var query = new URLSearchParams(params || {});
+			var requestParams = Object.assign({}, params || {}, { _mcf_request: Date.now() });
+			var query = new URLSearchParams(requestParams);
 			return url + (query.toString() ? '?' + query.toString() : '');
 		}
 
@@ -107,7 +108,7 @@
 				page: state.page,
 				per_page: config.perPage || 8
 			};
-			fetch(endpoint('/recipes', params), { headers: { Accept: 'application/json' } })
+			fetch(endpoint('/recipes', params), { cache: 'no-store', headers: { Accept: 'application/json' } })
 				.then(function (response) {
 					if (!response.ok) {
 						throw new Error('search_failed');
@@ -166,7 +167,7 @@
 
 		function openRecipe(id) {
 			setStatus(config.i18n.loading);
-			fetch(endpoint('/recipes/' + encodeURIComponent(id)), { headers: { Accept: 'application/json' } })
+				fetch(endpoint('/recipes/' + encodeURIComponent(id)), { cache: 'no-store', headers: { Accept: 'application/json' } })
 				.then(function (response) {
 					if (!response.ok) {
 						throw new Error('recipe_failed');
