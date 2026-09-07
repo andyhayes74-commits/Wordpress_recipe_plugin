@@ -49,6 +49,7 @@ class MCF_Recipe_Rest {
 	}
 
 	public static function list_recipes( WP_REST_Request $request ) {
+		self::prevent_cache();
 		$search   = sanitize_text_field( $request->get_param( 'search' ) );
 		$cuisine  = sanitize_title( $request->get_param( 'cuisine' ) );
 		$dietary  = sanitize_title( $request->get_param( 'dietary' ) );
@@ -153,6 +154,7 @@ class MCF_Recipe_Rest {
 	}
 
 	public static function get_recipe( WP_REST_Request $request ) {
+		self::prevent_cache();
 		$id = absint( $request['id'] );
 		$post = get_post( $id );
 		if ( ! $post || MCF_Recipe_Plugin::POST_TYPE !== $post->post_type || 'publish' !== $post->post_status ) {
@@ -162,6 +164,7 @@ class MCF_Recipe_Rest {
 	}
 
 	public static function adapt_recipe( WP_REST_Request $request ) {
+		self::prevent_cache();
 		$id = absint( $request['id'] );
 		$post = get_post( $id );
 		if ( ! $post || MCF_Recipe_Plugin::POST_TYPE !== $post->post_type || 'publish' !== $post->post_status ) {
@@ -304,5 +307,15 @@ class MCF_Recipe_Rest {
 		}
 		set_transient( $key, 1, MINUTE_IN_SECONDS );
 		return false;
+	}
+
+	/**
+	 * Recipe data must not be served from a page or REST cache after an import
+	 * or publication change. LiteSpeed exposes this action specifically for
+	 * dynamic requests that should bypass its cache.
+	 */
+	private static function prevent_cache() {
+		do_action( 'litespeed_control_set_nocache' );
+		nocache_headers();
 	}
 }
