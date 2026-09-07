@@ -44,6 +44,10 @@ class MCF_Recipe_Plugin {
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
 		add_action( 'save_post_' . self::POST_TYPE, array( $this, 'save_recipe' ), 10, 2 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_assets' ) );
+		add_filter( 'script_loader_tag', array( __CLASS__, 'script_loader_tag' ), 10, 3 );
+		add_filter( 'litespeed_optimize_js_excludes', array( __CLASS__, 'litespeed_script_excludes' ) );
+		add_filter( 'litespeed_optm_js_defer_exc', array( __CLASS__, 'litespeed_script_excludes' ) );
+		add_filter( 'litespeed_optm_gm_js_exc', array( __CLASS__, 'litespeed_script_excludes' ) );
 		add_shortcode( 'mcf_recipes', array( $this, 'shortcode' ) );
 
 		MCF_Recipe_Admin::init();
@@ -110,47 +114,56 @@ class MCF_Recipe_Plugin {
 		);
 	}
 
+	public static function script_loader_tag( $tag, $handle, $src ) {
+		if ( 'mcf-recipes' !== $handle ) {
+			return $tag;
+		}
+		return str_replace( '<script ', '<script data-no-defer="1" ', $tag );
+	}
+
+	public static function litespeed_script_excludes( $excludes ) {
+		$excludes = is_array( $excludes ) ? $excludes : array_filter( array( $excludes ) );
+		$excludes[] = 'mcf-recipes.js';
+		return array_values( array_unique( $excludes ) );
+	}
+
 	public function shortcode() {
 		$text = MCF_Recipe_Admin::display_text();
 		wp_enqueue_style( 'mcf-recipes' );
 		wp_enqueue_script( 'mcf-recipes' );
-		wp_localize_script(
-			'mcf-recipes',
-			'MCFRecipes',
-			array(
-				// Use a relative URL so the request follows the page's HTTP/HTTPS scheme.
-				'restUrl' => wp_make_link_relative( rest_url( 'mcf-recipes/v1' ) ),
-				'perPage' => 8,
-				'i18n'    => array(
-					'loading'               => $text['loading'],
-					'noResults'             => $text['no_results'],
-					'resultsSingular'       => $text['results_singular'],
-					'resultsPlural'         => $text['results_plural'],
-					'loadMore'              => $text['load_more'],
-					'viewRecipe'            => $text['view_recipe'],
-					'adaptRecipe'           => $text['adapt_recipe'],
-					'printRecipe'           => $text['print_recipe'],
-					'adaptPrompt'           => $text['adapt_prompt'],
-					'adaptLoading'          => $text['adapt_loading'],
-					'adaptError'            => $text['adapt_error'],
-					'backToRecipes'         => $text['back_to_recipes'],
-					'recipeBadge'           => $text['recipe_badge'],
-					'aiAdaptedBadge'        => $text['ai_adapted_badge'],
-					'prepLabel'             => $text['prep_label'],
-					'cookLabel'             => $text['cook_label'],
-					'servingsLabel'         => $text['servings_label'],
-					'ingredientsHeading'    => $text['ingredients_heading'],
-					'methodHeading'         => $text['method_heading'],
-					'allergenHeading'       => $text['allergen_heading'],
-					'storageHeading'        => $text['storage_heading'],
-					'adaptationNotesHeading'=> $text['adaptation_notes_heading'],
-				),
-			)
+		$config = array(
+			// Use a relative URL so the request follows the page's HTTP/HTTPS scheme.
+			'restUrl' => wp_make_link_relative( rest_url( 'mcf-recipes/v1' ) ),
+			'perPage' => 8,
+			'i18n'    => array(
+				'loading'                => $text['loading'],
+				'noResults'              => $text['no_results'],
+				'resultsSingular'        => $text['results_singular'],
+				'resultsPlural'          => $text['results_plural'],
+				'loadMore'               => $text['load_more'],
+				'viewRecipe'             => $text['view_recipe'],
+				'adaptRecipe'            => $text['adapt_recipe'],
+				'printRecipe'            => $text['print_recipe'],
+				'adaptPrompt'            => $text['adapt_prompt'],
+				'adaptLoading'           => $text['adapt_loading'],
+				'adaptError'             => $text['adapt_error'],
+				'backToRecipes'          => $text['back_to_recipes'],
+				'recipeBadge'            => $text['recipe_badge'],
+				'aiAdaptedBadge'         => $text['ai_adapted_badge'],
+				'prepLabel'             => $text['prep_label'],
+				'cookLabel'             => $text['cook_label'],
+				'servingsLabel'          => $text['servings_label'],
+				'ingredientsHeading'     => $text['ingredients_heading'],
+				'methodHeading'          => $text['method_heading'],
+				'allergenHeading'        => $text['allergen_heading'],
+				'storageHeading'         => $text['storage_heading'],
+				'adaptationNotesHeading' => $text['adaptation_notes_heading'],
+			),
 		);
 
 		ob_start();
 		?>
-		<section class="mcf-recipe-library" style="<?php echo esc_attr( MCF_Recipe_Admin::display_style() ); ?>" aria-labelledby="mcf-recipe-library-title">
+		<section class="mcf-recipe-library" style="<?php echo esc_attr( MCF_Recipe_Admin::display_style() ); ?>" data-mcf-config="<?php echo esc_attr( wp_json_encode( $config ) ); ?>" aria-labelledby="mcf-recipe-library-title">
 			<div class="mcf-recipe-library__intro">
 				<p class="mcf-recipe-library__eyebrow"><?php echo esc_html( $text['eyebrow'] ); ?></p>
 				<h2 id="mcf-recipe-library-title"><?php echo esc_html( $text['intro_heading'] ); ?></h2>
