@@ -1,8 +1,34 @@
 # WordPress Recipe Plugin
 
-A planned WordPress recipe-library plugin for the Marcham Community Fridge website.
+A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
-The plugin will help visitors find practical recipes for surplus ingredients, then adapt selected recipes to suit what they have available.
+The plugin helps visitors find practical recipes for surplus ingredients, then adapt selected recipes to suit what they have available.
+
+## Current MVP
+
+The first working version includes:
+
+- WordPress Recipe content type with recipe metadata and searchable taxonomies
+- Admin recipe editing with draft, pending-review and published states
+- CSV import with optional image URL download into the Media Library
+- Elementor-compatible [mcf_recipes] shortcode
+- Searchable recipe cards with cuisine and dietary filters
+- In-page recipe detail panel
+- Server-side OpenAI recipe adaptation endpoint
+- Browser print / save-as-PDF output for the selected recipe
+
+This is an MVP. Recipes should be tested with a small CSV first and reviewed for allergens, storage advice and cooking instructions before publication.
+
+## Installation and setup
+
+1. Install the plugin ZIP through WordPress → Plugins → Add New → Upload Plugin.
+2. Activate Marcham Community Fridge Recipe Library.
+3. Open Recipe Library → Settings.
+4. Enter the OpenAI API key and model for AI adaptation. The key is stored in WordPress settings and is used only server-side; it is never sent to the browser.
+5. Add recipes individually or use Recipe Library → Import CSV.
+6. Add [mcf_recipes] to an Elementor Shortcode widget.
+
+AI adaptation remains unavailable until an administrator enters an API key. The key must never be placed in an Elementor page, JavaScript file or public repository.
 
 ## Planned visitor experience
 
@@ -71,6 +97,8 @@ During import, the plugin should be able to:
 3. Download images from stable, authorised URLs into the WordPress Media Library.
 4. Set featured images and alt text.
 5. Import recipes as drafts or pending review before publication.
+
+An example file is included at examples/recipes-example.csv. The ingredients and method fields use || between entries so the importer can preserve each ingredient and method step separately.
 
 ## AI recipe modification
 
