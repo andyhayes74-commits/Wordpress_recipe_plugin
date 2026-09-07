@@ -102,12 +102,20 @@
 			}
 			setStatus(config.i18n.loading);
 			var params = {
-				search: state.search,
-				cuisine: state.cuisine,
-				dietary: state.dietary,
 				page: state.page,
 				per_page: config.perPage || 8
 			};
+			// Do not send empty filters. Some WordPress/LiteSpeed combinations
+			// handle blank REST query values inconsistently.
+			if (state.search) {
+				params.search = state.search;
+			}
+			if (state.cuisine) {
+				params.cuisine = state.cuisine;
+			}
+			if (state.dietary) {
+				params.dietary = state.dietary;
+			}
 			fetch(endpoint('/recipes', params), { cache: 'no-store', headers: { Accept: 'application/json' } })
 				.then(function (response) {
 					if (!response.ok) {
