@@ -1,4 +1,4 @@
-# WordPress Recipe Plugin v0.2.5
+# WordPress Recipe Plugin v0.3.0
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
@@ -22,6 +22,8 @@ The first working version includes:
 - Relative REST URL handling so recipe searches work when the page is served over HTTPS
 - Initialisation support for LiteSpeed delayed JavaScript loading
 - Search requests use recipe titles and curated search terms, not incidental ingredients
+- Duplicate-safe CSV imports that update matching recipe titles instead of creating accidental copies
+- CSV validation and an import report showing created, updated, skipped, failed and image-download rows
 
 This is an MVP. Recipes should be tested with a small CSV first and reviewed for allergens, storage advice and cooking instructions before publication.
 
@@ -29,7 +31,7 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.2.5 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.3.0 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
 
 ## Installation and setup
 
@@ -111,6 +113,8 @@ During import, the plugin should be able to:
 3. Download images from stable, authorised URLs into the WordPress Media Library.
 4. Set featured images and alt text.
 5. Import recipes as drafts or pending review before publication.
+
+The importer now updates an existing recipe when the CSV title matches, with that option enabled by default. This makes it safe to correct and re-import the CSV without creating a second copy of every recipe. New recipes default to draft; an existing recipe keeps its current status unless the CSV contains a valid `status` value. The import results page reports created, updated, skipped, failed and image-download failures. Repeated titles in one CSV are skipped with a warning.
 
 An example file is included at examples/recipes-example.csv. The ingredients and method fields can use `||` or semicolons between entries so the importer can preserve each ingredient and method step separately.
 
