@@ -1,4 +1,4 @@
-# WordPress Recipe Plugin v0.2.4
+# WordPress Recipe Plugin v0.2.5
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
@@ -21,6 +21,7 @@ The first working version includes:
 - REST responses marked as non-cacheable so published/imported recipes appear without waiting for LiteSpeed cache expiry
 - Relative REST URL handling so recipe searches work when the page is served over HTTPS
 - Initialisation support for LiteSpeed delayed JavaScript loading
+- Search requests use recipe titles and curated search terms, not incidental ingredients
 
 This is an MVP. Recipes should be tested with a small CSV first and reviewed for allergens, storage advice and cooking instructions before publication.
 
@@ -28,7 +29,7 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.2.4 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.2.5 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
 
 ## Installation and setup
 
