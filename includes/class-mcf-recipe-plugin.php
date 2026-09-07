@@ -118,7 +118,8 @@ class MCF_Recipe_Plugin {
 			'mcf-recipes',
 			'MCFRecipes',
 			array(
-				'restUrl' => esc_url_raw( rest_url( 'mcf-recipes/v1' ) ),
+				// Use a relative URL so the request follows the page's HTTP/HTTPS scheme.
+				'restUrl' => wp_make_link_relative( rest_url( 'mcf-recipes/v1' ) ),
 				'perPage' => 8,
 				'i18n'    => array(
 					'loading'               => $text['loading'],
