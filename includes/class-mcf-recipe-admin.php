@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MCF_Recipe_Admin {
 	const OPTION = 'mcf_recipe_settings';
+	private static $recipe_title_index = null;
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
@@ -464,25 +465,49 @@ class MCF_Recipe_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
-		$result = isset( $_GET['mcf_imported'] ) ? absint( $_GET['mcf_imported'] ) : null;
+		$report = array(
+			'created'        => isset( $_GET['mcf_import_created'] ) ? absint( $_GET['mcf_import_created'] ) : null,
+			'updated'        => isset( $_GET['mcf_import_updated'] ) ? absint( $_GET['mcf_import_updated'] ) : null,
+			'skipped'        => isset( $_GET['mcf_import_skipped'] ) ? absint( $_GET['mcf_import_skipped'] ) : null,
+			'failed'         => isset( $_GET['mcf_import_failed'] ) ? absint( $_GET['mcf_import_failed'] ) : null,
+			'image_failures' => isset( $_GET['mcf_import_image_failures'] ) ? absint( $_GET['mcf_import_image_failures'] ) : null,
+			'warnings'       => isset( $_GET['mcf_import_warnings'] ) ? absint( $_GET['mcf_import_warnings'] ) : null,
+		);
+		$has_report = null !== $report['created'];
+		if ( ! $has_report && isset( $_GET['mcf_imported'] ) ) {
+			$report['created'] = absint( $_GET['mcf_imported'] );
+			$report['updated'] = 0;
+			$report['skipped'] = 0;
+			$report['failed']  = 0;
+			$report['image_failures'] = 0;
+			$report['warnings'] = 0;
+			$has_report = true;
+		}
 		$error  = isset( $_GET['mcf_import_error'] ) ? sanitize_text_field( wp_unslash( $_GET['mcf_import_error'] ) ) : '';
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Import Recipes', 'marcham-recipe-plugin' ); ?></h1>
-			<?php if ( null !== $result ) : ?>
-				<div class="notice notice-success"><p><?php echo esc_html( sprintf( _n( '%d recipe imported.', '%d recipes imported.', $result, 'marcham-recipe-plugin' ), $result ) ); ?></p></div>
+			<?php if ( $has_report ) : ?>
+				<div class="notice notice-success">
+					<p><strong><?php esc_html_e( 'Import complete.', 'marcham-recipe-plugin' ); ?></strong></p>
+					<p><?php echo esc_html( sprintf( __( 'Created: %1$d · Updated: %2$d · Skipped: %3$d · Failed: %4$d', 'marcham-recipe-plugin' ), $report['created'], $report['updated'], $report['skipped'], $report['failed'] ) ); ?></p>
+					<?php if ( $report['image_failures'] || $report['warnings'] ) : ?>
+						<p><?php echo esc_html( sprintf( __( 'Image downloads failed: %1$d · Rows with warnings: %2$d. Check the affected recipes before publishing.', 'marcham-recipe-plugin' ), $report['image_failures'], $report['warnings'] ) ); ?></p>
+					<?php endif; ?>
+				</div>
 			<?php endif; ?>
 			<?php if ( $error ) : ?>
 				<div class="notice notice-error"><p><?php echo esc_html( $error ); ?></p></div>
 			<?php endif; ?>
 			<div class="mcf-admin-card">
-				<p><?php esc_html_e( 'Upload a UTF-8 CSV file. Imported recipes default to draft status unless the CSV contains a status column.', 'marcham-recipe-plugin' ); ?></p>
+				<p><?php esc_html_e( 'Upload a UTF-8 CSV file. New recipes default to draft status unless the CSV contains a valid status column.', 'marcham-recipe-plugin' ); ?></p>
 				<p><?php esc_html_e( 'Use || between multiple ingredients or method steps. Use commas or pipes between cuisine, dietary and search-term values.', 'marcham-recipe-plugin' ); ?></p>
 				<p><code>title,description,cuisine,meal_type,ingredients,method,prep_time,cook_time,servings,dietary_tags,allergens,storage_advice,search_terms,image_url,image_alt_text,status</code></p>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
 					<input type="hidden" name="action" value="mcf_import_csv">
 					<?php wp_nonce_field( 'mcf_import_csv' ); ?>
 					<p><input type="file" name="mcf_recipe_csv" accept=".csv,text/csv" required></p>
+					<p><label><input type="checkbox" name="mcf_import_update_existing" value="1" checked> <?php esc_html_e( 'Update an existing recipe when the CSV title matches (recommended). Uncheck this only if you intentionally want duplicate recipes.', 'marcham-recipe-plugin' ); ?></label></p>
 					<?php submit_button( __( 'Import CSV', 'marcham-recipe-plugin' ), 'primary', 'submit', false ); ?>
 				</form>
 			</div>
@@ -500,7 +525,6 @@ class MCF_Recipe_Admin {
 		}
 
 		$file = $_FILES['mcf_recipe_csv'];
-		$mime = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'] );
 		if ( ! in_array( strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) ), array( 'csv' ), true ) ) {
 			self::redirect_import_error( __( 'Only CSV files can be imported.', 'marcham-recipe-plugin' ) );
 		}
@@ -515,7 +539,20 @@ class MCF_Recipe_Admin {
 			self::redirect_import_error( __( 'The CSV file has no header row.', 'marcham-recipe-plugin' ) );
 		}
 		$headers = array_map( array( __CLASS__, 'normalise_header' ), $headers );
-		$count   = 0;
+		if ( ! in_array( 'title', $headers, true ) ) {
+			fclose( $handle );
+			self::redirect_import_error( __( 'The CSV must contain a title column.', 'marcham-recipe-plugin' ) );
+		}
+		$report = array(
+			'created'        => 0,
+			'updated'        => 0,
+			'skipped'        => 0,
+			'failed'         => 0,
+			'image_failures' => 0,
+			'warnings'       => 0,
+		);
+		$update_existing = ! empty( $_POST['mcf_import_update_existing'] );
+		$seen_titles     = array();
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -530,30 +567,94 @@ class MCF_Recipe_Admin {
 				$data[ $header ] = isset( $row[ $index ] ) ? trim( $row[ $index ] ) : '';
 			}
 			if ( empty( $data['title'] ) ) {
+				$report['skipped']++;
 				continue;
 			}
-			$status = self::valid_status( $data['status'] ?? '' ) ? $data['status'] : 'draft';
-			$post_id = wp_insert_post(
-				array(
-					'post_type'   => MCF_Recipe_Plugin::POST_TYPE,
-					'post_status' => $status,
-					'post_title'  => sanitize_text_field( $data['title'] ),
-					'post_excerpt'=> sanitize_textarea_field( $data['description'] ?? '' ),
-				),
-				true
+			$title = sanitize_text_field( $data['title'] );
+			$title_key = strtolower( $title );
+			if ( isset( $seen_titles[ $title_key ] ) ) {
+				$report['skipped']++;
+				$report['warnings']++;
+				continue;
+			}
+			$seen_titles[ $title_key ] = true;
+			$status_value = isset( $data['status'] ) ? sanitize_key( $data['status'] ) : '';
+			$status_valid = self::valid_status( $status_value );
+			if ( '' !== $status_value && ! $status_valid ) {
+				$report['warnings']++;
+			}
+			foreach ( array( 'ingredients', 'method', 'search_terms' ) as $recommended_field ) {
+				if ( empty( $data[ $recommended_field ] ) ) {
+					$report['warnings']++;
+					break;
+				}
+			}
+
+			$existing_id = $update_existing ? self::find_existing_recipe_by_title( $title ) : 0;
+			$post_args   = array(
+				'post_type'    => MCF_Recipe_Plugin::POST_TYPE,
+				'post_title'   => $title,
+				'post_excerpt' => sanitize_textarea_field( $data['description'] ?? '' ),
 			);
+			if ( $existing_id ) {
+				$post_args['ID'] = $existing_id;
+				if ( $status_valid ) {
+					$post_args['post_status'] = $status_value;
+				}
+				$post_id = wp_update_post( $post_args, true );
+				$action  = 'updated';
+			} else {
+				$post_args['post_status'] = $status_valid ? $status_value : 'draft';
+				$post_id = wp_insert_post( $post_args, true );
+				$action  = 'created';
+			}
 			if ( is_wp_error( $post_id ) ) {
+				$report['failed']++;
 				continue;
 			}
 			self::save_imported_fields( $post_id, $data );
-			if ( ! empty( $data['image_url'] ) ) {
-				self::import_image( $post_id, $data['image_url'], $data['image_alt_text'] ?? '' );
+			if ( 'created' === $action ) {
+				$report['created']++;
+			} else {
+				$report['updated']++;
 			}
-			$count++;
+			if ( ! empty( $data['image_url'] ) && ( 'created' === $action || ! get_post_thumbnail_id( $post_id ) ) ) {
+				if ( ! self::import_image( $post_id, $data['image_url'], $data['image_alt_text'] ?? '' ) ) {
+					$report['image_failures']++;
+				}
+			}
 		}
 		fclose( $handle );
-		wp_safe_redirect( add_query_arg( array( 'page' => 'mcf-recipe-import', 'mcf_imported' => $count ), admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( array(
+			'page'                      => 'mcf-recipe-import',
+			'mcf_imported'              => $report['created'] + $report['updated'],
+			'mcf_import_created'        => $report['created'],
+			'mcf_import_updated'        => $report['updated'],
+			'mcf_import_skipped'        => $report['skipped'],
+			'mcf_import_failed'         => $report['failed'],
+			'mcf_import_image_failures' => $report['image_failures'],
+			'mcf_import_warnings'       => $report['warnings'],
+		), admin_url( 'admin.php' ) ) );
 		exit;
+	}
+
+	private static function find_existing_recipe_by_title( $title ) {
+		if ( null === self::$recipe_title_index ) {
+			self::$recipe_title_index = array();
+			$posts = get_posts(
+				array(
+					'post_type'      => MCF_Recipe_Plugin::POST_TYPE,
+					'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+				)
+			);
+			foreach ( $posts as $post_id ) {
+				self::$recipe_title_index[ strtolower( trim( get_the_title( $post_id ) ) ) ] = absint( $post_id );
+			}
+		}
+		$key = strtolower( trim( $title ) );
+		return isset( self::$recipe_title_index[ $key ] ) ? self::$recipe_title_index[ $key ] : 0;
 	}
 
 	private static function save_imported_fields( $post_id, $data ) {
@@ -582,11 +683,11 @@ class MCF_Recipe_Admin {
 	private static function import_image( $post_id, $url, $alt ) {
 		$url = esc_url_raw( $url );
 		if ( ! $url || ! wp_http_validate_url( $url ) ) {
-			return;
+			return false;
 		}
 		$tmp = download_url( $url, 30 );
 		if ( is_wp_error( $tmp ) ) {
-			return;
+			return false;
 		}
 		$file = array(
 			'name'     => sanitize_file_name( wp_basename( wp_parse_url( $url, PHP_URL_PATH ) ) ?: 'recipe-image.jpg' ),
@@ -595,13 +696,14 @@ class MCF_Recipe_Admin {
 		$attachment_id = media_handle_sideload( $file, $post_id );
 		if ( is_wp_error( $attachment_id ) ) {
 			@unlink( $tmp );
-			return;
+			return false;
 		}
 		if ( $alt ) {
 			update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
 			update_post_meta( $post_id, MCF_Recipe_Plugin::META_IMAGE_ALT, sanitize_text_field( $alt ) );
 		}
 		set_post_thumbnail( $post_id, $attachment_id );
+		return true;
 	}
 
 	private static function set_terms( $post_id, $taxonomy, $value ) {
