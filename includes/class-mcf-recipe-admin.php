@@ -674,7 +674,7 @@ class MCF_Recipe_Admin {
 		$ingredients = str_replace( array( '||', ';' ), "\n", $data['ingredients'] ?? '' );
 		$method      = str_replace( array( '||', ';' ), "\n", $data['method'] ?? '' );
 		update_post_meta( $post_id, MCF_Recipe_Plugin::META_INGREDIENTS, MCF_Recipe_Plugin::normalise_lines( $ingredients ) );
-		update_post_meta( $post_id, MCF_Recipe_Plugin::META_METHOD, MCF_Recipe_Plugin::normalise_lines( $method ) );
+		update_post_meta( $post_id, MCF_Recipe_Plugin::META_METHOD, MCF_Recipe_Plugin::normalise_method_lines( $method ) );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_CUISINE, $data['cuisine'] ?? '' );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_DIETARY, $data['dietary_tags'] ?? '' );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_INGREDIENT, $data['search_terms'] ?? '' );
