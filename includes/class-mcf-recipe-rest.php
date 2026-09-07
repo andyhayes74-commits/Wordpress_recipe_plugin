@@ -234,7 +234,7 @@ class MCF_Recipe_Rest {
 			'title'       => sanitize_text_field( isset( $data['title'] ) ? $data['title'] : $recipe['title'] ),
 			'description' => sanitize_textarea_field( isset( $data['description'] ) ? $data['description'] : $recipe['description'] ),
 			'ingredients' => MCF_Recipe_Plugin::normalise_lines( isset( $data['ingredients'] ) ? $data['ingredients'] : $recipe['ingredients'] ),
-			'method'      => MCF_Recipe_Plugin::normalise_lines( isset( $data['method'] ) ? $data['method'] : $recipe['method'] ),
+			'method'      => MCF_Recipe_Plugin::normalise_method_lines( isset( $data['method'] ) ? $data['method'] : $recipe['method'] ),
 			'warnings'    => MCF_Recipe_Plugin::normalise_lines( isset( $data['warnings'] ) ? $data['warnings'] : array() ),
 			'cuisine'     => $recipe['cuisine'],
 			'dietary'     => $recipe['dietary'],
