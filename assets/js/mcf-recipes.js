@@ -269,7 +269,21 @@
 		load(true);
 	}
 
-	document.addEventListener('DOMContentLoaded', function () {
-		Array.prototype.forEach.call(document.querySelectorAll('.mcf-recipe-library'), init);
-	});
+	function initAll() {
+		Array.prototype.forEach.call(document.querySelectorAll('.mcf-recipe-library'), function (root) {
+			if (root.getAttribute('data-mcf-initialised') === '1') {
+				return;
+			}
+			root.setAttribute('data-mcf-initialised', '1');
+			init(root);
+		});
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initAll);
+	} else {
+		initAll();
+	}
+	// LiteSpeed may inject delayed scripts after DOMContentLoaded has fired.
+	document.addEventListener('DOMContentLoadedLiteSpeedLoaded', initAll);
 }());
