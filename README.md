@@ -1,4 +1,4 @@
-# WordPress Recipe Plugin v0.3.0
+# WordPress Recipe Plugin v0.3.1
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
@@ -24,6 +24,7 @@ The first working version includes:
 - Search requests use recipe titles and curated search terms, not incidental ingredients
 - Duplicate-safe CSV imports that update matching recipe titles instead of creating accidental copies
 - CSV validation and an import report showing created, updated, skipped, failed and image-download rows
+- Numbered single-line method fields are split into readable ordered steps when imported or displayed
 
 This is an MVP. Recipes should be tested with a small CSV first and reviewed for allergens, storage advice and cooking instructions before publication.
 
@@ -31,7 +32,7 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.3.0 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload the v0.3.1 ZIP and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy.
 
 ## Installation and setup
 
