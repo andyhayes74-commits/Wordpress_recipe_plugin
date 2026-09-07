@@ -194,7 +194,7 @@ class MCF_Recipe_Plugin {
 		$fields = array(
 			'description' => get_post_meta( $post->ID, self::META_DESCRIPTION, true ),
 			'ingredients' => self::lines_to_text( get_post_meta( $post->ID, self::META_INGREDIENTS, true ) ),
-			'method'      => self::lines_to_text( get_post_meta( $post->ID, self::META_METHOD, true ) ),
+			'method'      => implode( "\n", self::normalise_method_lines( get_post_meta( $post->ID, self::META_METHOD, true ) ) ),
 			'prep_time'   => get_post_meta( $post->ID, self::META_PREP_TIME, true ),
 			'cook_time'   => get_post_meta( $post->ID, self::META_COOK_TIME, true ),
 			'servings'    => get_post_meta( $post->ID, self::META_SERVINGS, true ),
@@ -253,7 +253,7 @@ class MCF_Recipe_Plugin {
 			update_post_meta( $post_id, $meta_key, $value );
 		}
 		update_post_meta( $post_id, self::META_INGREDIENTS, self::text_to_lines( $input['ingredients'] ?? '' ) );
-		update_post_meta( $post_id, self::META_METHOD, self::text_to_lines( $input['method'] ?? '' ) );
+		update_post_meta( $post_id, self::META_METHOD, self::normalise_method_lines( $input['method'] ?? '' ) );
 		self::set_terms( $post_id, self::TAX_CUISINE, $input['cuisine'] ?? '' );
 		self::set_terms( $post_id, self::TAX_DIETARY, $input['dietary'] ?? '' );
 		self::set_terms( $post_id, self::TAX_INGREDIENT, $input['search_terms'] ?? '' );
@@ -280,7 +280,7 @@ class MCF_Recipe_Plugin {
 			'title'        => get_the_title( $post_id ),
 			'description'  => get_post_meta( $post_id, self::META_DESCRIPTION, true ),
 			'ingredients'  => self::normalise_lines( get_post_meta( $post_id, self::META_INGREDIENTS, true ) ),
-			'method'       => self::normalise_lines( get_post_meta( $post_id, self::META_METHOD, true ) ),
+			'method'       => self::normalise_method_lines( get_post_meta( $post_id, self::META_METHOD, true ) ),
 			'prep_time'    => get_post_meta( $post_id, self::META_PREP_TIME, true ),
 			'cook_time'    => get_post_meta( $post_id, self::META_COOK_TIME, true ),
 			'servings'     => get_post_meta( $post_id, self::META_SERVINGS, true ),
@@ -304,6 +304,26 @@ class MCF_Recipe_Plugin {
 			return array();
 		}
 		return array_values( array_filter( array_map( 'sanitize_text_field', preg_split( '/\r\n|\r|\n/', $value ) ) ) );
+	}
+
+	public static function normalise_method_lines( $value ) {
+		if ( is_array( $value ) ) {
+			$value = implode( "\n", $value );
+		}
+		if ( ! is_string( $value ) || '' === trim( $value ) ) {
+			return array();
+		}
+		$value = str_replace( array( "\r\n", "\r" ), "\n", $value );
+		$value = preg_replace( '/[ \t]+(?=\d+\.\s+)/', "\n", trim( $value ) );
+		$lines = preg_split( '/\n+/', $value );
+		$lines = array_map(
+			static function ( $line ) {
+				$line = preg_replace( '/^\d+\.\s*/', '', trim( $line ) );
+				return sanitize_text_field( $line );
+			},
+			$lines
+		);
+		return array_values( array_filter( $lines ) );
 	}
 
 	public static function lines_to_text( $value ) {
