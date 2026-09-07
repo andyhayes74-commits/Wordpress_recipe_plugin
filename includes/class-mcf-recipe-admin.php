@@ -570,8 +570,10 @@ class MCF_Recipe_Admin {
 		foreach ( $meta as $key => $meta_key ) {
 			update_post_meta( $post_id, $meta_key, sanitize_textarea_field( $data[ $key ] ?? '' ) );
 		}
-		update_post_meta( $post_id, MCF_Recipe_Plugin::META_INGREDIENTS, MCF_Recipe_Plugin::normalise_lines( str_replace( '||', "\n", $data['ingredients'] ?? '' ) ) );
-		update_post_meta( $post_id, MCF_Recipe_Plugin::META_METHOD, MCF_Recipe_Plugin::normalise_lines( str_replace( '||', "\n", $data['method'] ?? '' ) ) );
+		$ingredients = str_replace( array( '||', ';' ), "\n", $data['ingredients'] ?? '' );
+		$method      = str_replace( array( '||', ';' ), "\n", $data['method'] ?? '' );
+		update_post_meta( $post_id, MCF_Recipe_Plugin::META_INGREDIENTS, MCF_Recipe_Plugin::normalise_lines( $ingredients ) );
+		update_post_meta( $post_id, MCF_Recipe_Plugin::META_METHOD, MCF_Recipe_Plugin::normalise_lines( $method ) );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_CUISINE, $data['cuisine'] ?? '' );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_DIETARY, $data['dietary_tags'] ?? '' );
 		self::set_terms( $post_id, MCF_Recipe_Plugin::TAX_INGREDIENT, $data['search_terms'] ?? '' );
@@ -603,7 +605,7 @@ class MCF_Recipe_Admin {
 	}
 
 	private static function set_terms( $post_id, $taxonomy, $value ) {
-		$terms = preg_split( '/[,|\r\n]+/', (string) $value );
+		$terms = preg_split( '/[,|;\r\n]+/', (string) $value );
 		$terms = array_values( array_filter( array_map( 'sanitize_text_field', $terms ) ) );
 		wp_set_post_terms( $post_id, $terms, $taxonomy, false );
 	}
