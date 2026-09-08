@@ -305,7 +305,7 @@
 				(recipe.warnings && recipe.warnings.length ? '<div class="mcf-recipe-callout mcf-recipe-callout--warning"><strong>' + esc(config.i18n.adaptationNotesHeading || 'AI adaptation notes') + '</strong>' + list(recipe.warnings, 'mcf-recipe-list') + '</div>' : '') +
 				'<div class="mcf-recipe-detail__actions">' +
 				'<a class="mcf-recipe-button mcf-recipe-button--green" href="' + esc(recipe.source_url || '') + '" target="_blank" rel="noopener noreferrer">' + esc(sourceLabel) + ' ↗</a>' +
-				'<button type="button" class="mcf-recipe-button mcf-recipe-button--outline" data-mcf-print>' + esc(config.i18n.printRecipe) + '</button>' +
+				'<button type="button" class="mcf-recipe-button mcf-recipe-button--outline" data-mcf-download-pdf>' + esc(config.i18n.downloadPdf || 'Download recipe PDF') + '</button>' +
 				'</div></div></div>';
 		}
 
@@ -386,12 +386,11 @@
 				root.classList.remove('mcf-recipe-library--detail-open');
 				return;
 			}
-			if (event.target.closest('[data-mcf-print]')) {
-				root.classList.add('mcf-recipe-library--printing');
-				window.print();
-				window.setTimeout(function () {
-					root.classList.remove('mcf-recipe-library--printing');
-				}, 500);
+			if (event.target.closest('[data-mcf-download-pdf]')) {
+				var recipeId = detail.dataset.recipeId || '';
+				if (recipeId && config.pdfUrl) {
+					window.location.assign(config.pdfUrl + '&id=' + encodeURIComponent(recipeId));
+				}
 				return;
 			}
 		});

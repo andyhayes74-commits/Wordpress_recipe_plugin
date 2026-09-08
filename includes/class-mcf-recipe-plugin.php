@@ -49,6 +49,8 @@ class MCF_Recipe_Plugin {
 		add_filter( 'litespeed_optimize_js_excludes', array( __CLASS__, 'litespeed_script_excludes' ) );
 		add_filter( 'litespeed_optm_js_defer_exc', array( __CLASS__, 'litespeed_script_excludes' ) );
 		add_filter( 'litespeed_optm_gm_js_exc', array( __CLASS__, 'litespeed_script_excludes' ) );
+		add_action( 'admin_post_mcf_recipe_pdf', array( __CLASS__, 'download_recipe_pdf' ) );
+		add_action( 'admin_post_nopriv_mcf_recipe_pdf', array( __CLASS__, 'download_recipe_pdf' ) );
 		add_shortcode( 'mcf_recipes', array( $this, 'shortcode' ) );
 
 		MCF_Recipe_Admin::init();
@@ -128,6 +130,32 @@ class MCF_Recipe_Plugin {
 		return array_values( array_unique( $excludes ) );
 	}
 
+	/** Streams a generated PDF directly so visitors do not need a browser print dialog. */
+	public static function download_recipe_pdf() {
+		$id = MCF_Recipe_Providers::normalise_id( isset( $_GET['id'] ) ? wp_unslash( $_GET['id'] ) : '' );
+		$recipe = $id ? MCF_Recipe_Providers::recipe( $id ) : new WP_Error( 'recipe_invalid_id' );
+		if ( is_wp_error( $recipe ) || ! is_array( $recipe ) ) {
+			status_header( 404 );
+			wp_die( esc_html__( 'Recipe not found.', 'marcham-recipe-plugin' ) );
+		}
+		$pdf = MCF_Recipe_PDF::render( $recipe );
+		$filename = sanitize_file_name( ( $recipe['title'] ?? 'marcham-recipe' ) . '-marcham-community-fridge-recipe.pdf' );
+		if ( ! $filename ) {
+			$filename = 'marcham-community-fridge-recipe.pdf';
+		}
+		do_action( 'litespeed_control_set_nocache' );
+		nocache_headers();
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		header( 'Content-Type: application/pdf' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $pdf ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		echo $pdf; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Binary PDF stream.
+		exit;
+	}
+
 	public function shortcode() {
 		$text = MCF_Recipe_Admin::display_text();
 		wp_enqueue_style( 'mcf-recipes' );
@@ -135,6 +163,7 @@ class MCF_Recipe_Plugin {
 		$config = array(
 			// Use a relative URL so the request follows the page's HTTP/HTTPS scheme.
 			'restUrl' => wp_make_link_relative( rest_url( 'mcf-recipes/v1' ) ),
+			'pdfUrl'  => wp_make_link_relative( add_query_arg( 'action', 'mcf_recipe_pdf', admin_url( 'admin-post.php' ) ) ),
 			'perPage' => 8,
 			'i18n'    => array(
 				'loading'                => $text['loading'],
@@ -159,7 +188,7 @@ class MCF_Recipe_Plugin {
 				'sourceRecipe'           => $text['source_recipe'],
 				'mealdbRecipe'           => $text['mealdb_recipe'],
 				'spoonacularRecipe'      => $text['spoonacular_recipe'],
-				'printRecipe'            => $text['print_recipe'],
+				'downloadPdf'            => $text['download_pdf'],
 				'backToRecipes'          => $text['back_to_recipes'],
 				'recipeBadge'            => $text['recipe_badge'],
 				'aiAdaptedBadge'         => $text['ai_adapted_badge'],
