@@ -41,15 +41,55 @@
 		var grid = root.querySelector('[data-mcf-recipe-grid]');
 		var detail = root.querySelector('[data-mcf-recipe-detail]');
 		var status = root.querySelector('.mcf-recipe-status');
+		var searchProgress = root.querySelector('[data-mcf-search-progress]');
+		var searchProgressText = root.querySelector('[data-mcf-search-progress-text]');
+		var searchProgressDetail = root.querySelector('[data-mcf-search-progress-detail]');
 		var form = root.querySelector('.mcf-recipe-search');
 		var search = root.querySelector('input[name="search"]');
 		var loadMore = root.querySelector('.mcf-recipe-load-more');
 		var filters = root.querySelectorAll('[data-mcf-filter]');
-		var state = { page: 1, pages: 1, search: '', cuisine: '', dietary: '' };
-		var debounceTimer;
+		var filterToggles = root.querySelectorAll('[data-mcf-filter-toggle]');
+		var state = { page: 1, pages: 1, search: '', searchKey: '', cuisine: '', dietary: '', ai: false };
+		var requestSequence = 0;
+		var progressTimers = [];
+		var otherMatches = document.createElement('details');
+		otherMatches.className = 'mcf-recipe-other-matches';
+		otherMatches.hidden = true;
+		loadMore.insertAdjacentElement('afterend', otherMatches);
 
 		function setStatus(message) {
 			status.textContent = message || '';
+		}
+
+		function clearProgressTimers() {
+			progressTimers.forEach(function (timer) { window.clearTimeout(timer); });
+			progressTimers = [];
+		}
+
+		function showSearchProgress() {
+			if (!searchProgress) { return; }
+			clearProgressTimers();
+			root.setAttribute('aria-busy', 'true');
+			searchProgress.hidden = false;
+			if (searchProgressText) {
+				searchProgressText.textContent = config.i18n.aiSearching || 'Finding recipes that use your ingredients…';
+			}
+			if (searchProgressDetail) {
+				searchProgressDetail.textContent = config.i18n.aiSearchingDetail || 'Checking the recipes that best fit your search.';
+			}
+			progressTimers.push(window.setTimeout(function () {
+				if (searchProgressDetail) {
+					searchProgressDetail.textContent = config.i18n.aiSearchingSlow || 'Still searching carefully for the best matches…';
+				}
+			}, 2800));
+		}
+
+		function hideSearchProgress() {
+			clearProgressTimers();
+			root.removeAttribute('aria-busy');
+			if (searchProgress) {
+				searchProgress.hidden = true;
+			}
 		}
 
 	function endpoint(path, params) {
@@ -64,19 +104,53 @@
 				return;
 			}
 			[
-				{ name: 'cuisine', values: filtersData.cuisines || [], label: 'All cuisines' },
-				{ name: 'dietary', values: filtersData.dietary || [], label: 'All dietary types' }
+				{ name: 'cuisine', values: filtersData.cuisines || [] },
+				{ name: 'dietary', values: filtersData.dietary || [] }
 			].forEach(function (definition) {
-				var select = root.querySelector('[data-mcf-filter="' + definition.name + '"]');
-				if (!select || select.options.length > 1) {
+				var group = root.querySelector('[data-mcf-filter="' + definition.name + '"]');
+				if (!group || group.querySelectorAll('[data-mcf-filter-option]').length > 1) {
 					return;
 				}
 				definition.values.forEach(function (item) {
-					var option = document.createElement('option');
-					option.value = item.slug;
+					var option = document.createElement('button');
+					option.type = 'button';
+					option.className = 'mcf-recipe-filter-chip';
+					option.setAttribute('data-mcf-filter-option', item.slug);
+					option.setAttribute('aria-pressed', 'false');
 					option.textContent = item.name;
-					select.appendChild(option);
+					group.appendChild(option);
 				});
+				refreshFilterGroup(group, false);
+			});
+		}
+
+		function refreshFilterGroup(group, expanded) {
+			if (!group) {
+				return;
+			}
+			var limit = 5;
+			var options = Array.prototype.slice.call(group.querySelectorAll('[data-mcf-filter-option]'));
+			var toggle = group.parentNode.querySelector('[data-mcf-filter-toggle]');
+			var isExpanded = expanded === true || group.getAttribute('data-expanded') === 'true';
+			group.setAttribute('data-expanded', isExpanded ? 'true' : 'false');
+			options.forEach(function (option, index) {
+				option.hidden = !isExpanded && index >= limit;
+			});
+			if (toggle) {
+				toggle.hidden = options.length <= limit;
+				toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+				toggle.textContent = isExpanded ? (config.i18n.showLessFilters || 'Show less') : (config.i18n.showMoreFilters || 'Show more') + ' (' + (options.length - limit) + ')';
+			}
+		}
+
+		function setFilterButton(group, value) {
+			if (!group) {
+				return;
+			}
+			Array.prototype.forEach.call(group.querySelectorAll('[data-mcf-filter-option]'), function (button) {
+				var active = button.getAttribute('data-mcf-filter-option') === value;
+				button.classList.toggle('is-active', active);
+				button.setAttribute('aria-pressed', active ? 'true' : 'false');
 			});
 		}
 
@@ -96,19 +170,43 @@
 				'<div class="mcf-recipe-card__body">' +
 				'<p class="mcf-recipe-card__cuisine">' + esc((recipe.cuisine || []).join(' · ')) + '</p>' +
 				'<h3>' + esc(recipe.title) + '</h3>' +
-				'<p>' + esc(recipe.description || '') + '</p>' +
+				(recipe.description ? '<p class="mcf-recipe-card__description">' + esc(recipe.description) + '</p>' : '') +
 				labels(recipe.dietary, 'mcf-recipe-card__labels') +
 				'<div class="mcf-recipe-card__meta">' + meta.join('') + '</div>' +
 				'<button type="button" class="mcf-recipe-button" data-mcf-view="' + esc(recipe.id) + '">' + esc(config.i18n.viewRecipe) + ' <span aria-hidden="true">→</span></button>' +
 				'</div></article>';
 		}
 
+		function trackClick(id, title) {
+			if (!id) {
+				return;
+			}
+			fetch(endpoint('/recipes/' + encodeURIComponent(id) + '/click'), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+				body: JSON.stringify({ query_key: state.searchKey || '', title: title || '' })
+			}).catch(function () {
+				// Popularity tracking is best effort and must never block the recipe.
+			});
+		}
+
 		function load(reset) {
+			var sequence = ++requestSequence;
+			var isSearch = Boolean(state.search);
 			if (reset) {
 				state.page = 1;
 				grid.innerHTML = '';
+				otherMatches.innerHTML = '';
+				otherMatches.hidden = true;
+				otherMatches.open = false;
 			}
+			loadMore.disabled = true;
 			setStatus(config.i18n.loading);
+			if (isSearch) {
+				showSearchProgress();
+			} else {
+				hideSearchProgress();
+			}
 			var params = {
 				page: state.page,
 				per_page: config.perPage || 8
@@ -117,6 +215,7 @@
 			// handle blank REST query values inconsistently.
 			if (state.search) {
 				params.search = state.search;
+				params.ai = state.ai ? '1' : '0';
 			}
 			if (state.cuisine) {
 				params.cuisine = state.cuisine;
@@ -132,14 +231,38 @@
 					return response.json();
 				})
 				.then(function (data) {
+					if (sequence !== requestSequence) { return; }
+					hideSearchProgress();
 					updateOptions(data.filters);
+					state.searchKey = data.search_key || '';
 					state.pages = Number(data.pages || 1);
 					grid.insertAdjacentHTML('beforeend', (data.recipes || []).map(card).join(''));
 					loadMore.hidden = state.page >= state.pages;
-					setStatus(data.total ? data.total + ' ' + (data.total === 1 ? (config.i18n.resultsSingular || 'recipe found') : (config.i18n.resultsPlural || 'recipes found')) : config.i18n.noResults);
+					loadMore.disabled = false;
+					var message = data.total ? data.total + ' ' + (data.total === 1 ? (config.i18n.resultsSingular || 'recipe found') : (config.i18n.resultsPlural || 'recipes found')) : config.i18n.noResults;
+					if (data.search_status === 'no_strong_matches') {
+						message = config.i18n.noFocusedResults || 'No recipes focused on your search ingredients were found.';
+					} else if (data.search_status === 'ai_error') {
+						message = config.i18n.aiSearchError || 'The recipe search could not complete. Please try again.';
+					} else if (data.search_status === 'local') {
+						message = (config.i18n.localSearchNotice || 'Searching recipe titles and main ingredients.') + ' ' + message;
+					} else if (data.search_status === 'ai_not_configured') {
+						message = config.i18n.aiNotConfigured || 'AI recipe matching is not configured yet.';
+					} else if (data.search_status === 'mealdb_error') {
+						message = config.i18n.mealdbError || 'The recipe service could not be reached. Please try again.';
+					}
+					setStatus(message);
+					if (state.page === 1 && Array.isArray(data.other_recipes) && data.other_recipes.length) {
+						otherMatches.innerHTML = '<summary>' + esc(config.i18n.otherMatches || 'Other recipes containing your ingredients') + ' (' + data.other_recipes.length + ')</summary><div class="mcf-recipe-grid">' + data.other_recipes.map(card).join('') + '</div>';
+						otherMatches.hidden = false;
+					}
 				})
 				.catch(function () {
-					setStatus(config.i18n.noResults);
+					if (sequence !== requestSequence) { return; }
+					hideSearchProgress();
+					loadMore.disabled = false;
+					loadMore.hidden = true;
+					setStatus(config.i18n.searchError || 'Recipes could not be loaded. Please try again.');
 				});
 		}
 
@@ -165,7 +288,7 @@
 				'<span class="mcf-recipe-detail__badge">' + esc(recipe.ai_adapted ? (config.i18n.aiAdaptedBadge || 'AI-adapted') : (config.i18n.recipeBadge || 'Recipe')) + '</span>' +
 				'</div>' +
 				'<div class="mcf-recipe-detail__content">' +
-				(image ? '<div class="mcf-recipe-detail__image">' + image + '</div>' : '') +
+				(image ? '<div class="mcf-recipe-detail__image"><span class="mcf-recipe-detail__selected">✓ Selected</span>' + image + '</div>' : '') +
 				'<div class="mcf-recipe-detail__copy">' +
 				'<h2>' + esc(recipe.title) + '</h2>' +
 				'<div class="mcf-recipe-detail__meta">' + metadata.join(' · ') + '</div>' +
@@ -191,6 +314,7 @@
 					return response.json();
 				})
 				.then(function (recipe) {
+					trackClick(id, recipe.title);
 					detail.dataset.recipeId = id;
 					detail.innerHTML = detailHtml(recipe);
 					detail.hidden = false;
@@ -206,19 +330,26 @@
 		form.addEventListener('submit', function (event) {
 			event.preventDefault();
 			state.search = search.value.trim();
+			state.ai = Boolean(state.search);
 			load(true);
 		});
-		search.addEventListener('input', function () {
-			clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(function () {
-				state.search = search.value.trim();
-				load(true);
-			}, 350);
-		});
 		Array.prototype.forEach.call(filters, function (filter) {
-			filter.addEventListener('change', function () {
-				state[filter.getAttribute('data-mcf-filter')] = filter.value;
+			filter.addEventListener('click', function (event) {
+				var button = event.target.closest('[data-mcf-filter-option]');
+				if (!button) {
+					return;
+				}
+				var value = button.getAttribute('data-mcf-filter-option') || '';
+				state[filter.getAttribute('data-mcf-filter')] = value;
+				state.ai = Boolean(state.search);
+				setFilterButton(filter, value);
 				load(true);
+			});
+		});
+		Array.prototype.forEach.call(filterToggles, function (toggle) {
+			toggle.addEventListener('click', function () {
+				var group = toggle.parentNode.querySelector('[data-mcf-filter]');
+				refreshFilterGroup(group, toggle.getAttribute('aria-expanded') !== 'true');
 			});
 		});
 		loadMore.addEventListener('click', function () {
