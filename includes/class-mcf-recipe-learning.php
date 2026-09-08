@@ -87,6 +87,13 @@ class MCF_Recipe_Learning {
 		return $ids;
 	}
 
+	public static function global_popular_ids( $limit = 24 ) {
+		global $wpdb;
+		$limit = min( 48, max( 1, absint( $limit ) ) );
+		$rows = $wpdb->get_col( $wpdb->prepare( 'SELECT meal_id FROM ' . self::clicks_table() . ' WHERE query_key = %s ORDER BY click_count DESC, last_clicked_at DESC LIMIT %d', '*', $limit ) );
+		return self::ids( $rows );
+	}
+
 	private static function ids( $items ) {
 		if ( is_string( $items ) ) { $items = json_decode( $items, true ); }
 		$items = array_map( function ( $id ) { return preg_replace( '/[^0-9]/', '', (string) $id ); }, (array) $items );

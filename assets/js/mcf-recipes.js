@@ -139,7 +139,10 @@
 			if (toggle) {
 				toggle.hidden = options.length <= limit;
 				toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-				toggle.textContent = isExpanded ? (config.i18n.showLessFilters || 'Show less') : (config.i18n.showMoreFilters || 'Show more') + ' (' + (options.length - limit) + ')';
+				var moreLabel = group.getAttribute('data-mcf-filter') === 'cuisine'
+					? (config.i18n.showMoreCuisines || 'Show more cuisines')
+					: (config.i18n.showMoreFilters || 'Show more');
+				toggle.textContent = isExpanded ? (config.i18n.showLessFilters || 'Show less') : moreLabel + ' (' + (options.length - limit) + ')';
 			}
 		}
 

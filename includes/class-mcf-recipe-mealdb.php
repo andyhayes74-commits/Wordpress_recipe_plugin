@@ -230,13 +230,18 @@ class MCF_Recipe_MealDB {
 		return sanitize_text_field( $slug );
 	}
 
-	public static function browse_candidates() {
-		$ids = array();
-		foreach ( array( 'Vegetarian', 'Beef', 'Chicken' ) as $category ) {
-			$data = self::request( 'filter.php', array( 'c' => $category ) );
-			$ids = array_merge( $ids, self::meal_ids( $data ) );
+	public static function browse_candidates( $preferred_ids = array(), $limit = 24 ) {
+		$limit = min( 24, max( 1, absint( $limit ) ) );
+		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'absint', (array) $preferred_ids ) ) ) ), 0, $limit );
+		if ( count( $ids ) < $limit ) {
+			$fallback_ids = array();
+			foreach ( array( 'Vegetarian', 'Beef', 'Chicken' ) as $category ) {
+				$data = self::request( 'filter.php', array( 'c' => $category ) );
+				$fallback_ids = array_merge( $fallback_ids, self::meal_ids( $data ) );
+			}
+			$fallback_ids = array_values( array_diff( array_values( array_unique( array_map( 'absint', $fallback_ids ) ) ), $ids ) );
+			$ids = array_merge( $ids, array_slice( $fallback_ids, 0, $limit - count( $ids ) ) );
 		}
-		$ids = array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, 24 );
 		$recipes = array();
 		foreach ( $ids as $id ) {
 			$meal = self::meal( $id );

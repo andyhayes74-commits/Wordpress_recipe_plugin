@@ -70,7 +70,7 @@ class MCF_Recipe_Rest {
 				}
 			}
 		} else {
-			$browse = MCF_Recipe_MealDB::browse_candidates();
+			$browse = MCF_Recipe_MealDB::browse_candidates( MCF_Recipe_Learning::global_popular_ids( 24 ) );
 			foreach ( $browse as $recipe ) { $meal_map[ (string) $recipe['id'] ] = $recipe; $ids[] = (string) $recipe['id']; }
 		}
 
