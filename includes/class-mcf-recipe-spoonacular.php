@@ -69,7 +69,7 @@ class MCF_Recipe_Spoonacular {
 		return is_wp_error( $data ) ? $data : self::to_recipe( $data );
 	}
 
-	public static function find_candidates( $search, $cuisine = '' ) {
+	public static function find_candidates( $search, $dietary = '' ) {
 		$search = sanitize_text_field( $search );
 		$terms = self::terms( $search );
 		$args = array(
@@ -79,9 +79,7 @@ class MCF_Recipe_Spoonacular {
 			'fillIngredients'      => 'true',
 			'instructionsRequired' => 'true',
 		);
-		if ( $cuisine ) {
-			$args['cuisine'] = str_replace( '-', ' ', sanitize_title( $cuisine ) );
-		}
+		self::apply_dietary_filter( $args, $dietary );
 		$data = self::request( 'recipes/complexSearch', $args );
 		if ( is_wp_error( $data ) ) {
 			return $data;
@@ -106,9 +104,31 @@ class MCF_Recipe_Spoonacular {
 		);
 	}
 
-	public static function browse_candidates( $preferred_ids = array(), $limit = 24 ) {
+	public static function browse_candidates( $preferred_ids = array(), $limit = 24, $dietary = '' ) {
 		$limit = min( 24, max( 1, absint( $limit ) ) );
 		$recipes = array();
+		/* Random recipes cannot reliably apply an intolerance filter. Use the
+		 * complex search endpoint whenever a dietary chip is selected. */
+		if ( $dietary ) {
+			$args = array(
+				'number'               => $limit,
+				'sort'                 => 'random',
+				'addRecipeInformation' => 'true',
+				'fillIngredients'      => 'true',
+				'instructionsRequired' => 'true',
+			);
+			self::apply_dietary_filter( $args, $dietary );
+			$data = self::request( 'recipes/complexSearch', $args );
+			if ( ! is_wp_error( $data ) ) {
+				foreach ( isset( $data['results'] ) && is_array( $data['results'] ) ? $data['results'] : array() as $recipe ) {
+					$normalised = self::to_recipe( $recipe );
+					if ( ! empty( $normalised['id'] ) ) {
+						$recipes[ $normalised['id'] ] = $normalised;
+					}
+				}
+			}
+			return array_slice( array_values( $recipes ), 0, $limit );
+		}
 		foreach ( array_slice( array_filter( array_map( array( __CLASS__, 'external_id' ), (array) $preferred_ids ) ), 0, $limit ) as $id ) {
 			$recipe = self::recipe( $id );
 			if ( is_array( $recipe ) ) {
@@ -132,6 +152,46 @@ class MCF_Recipe_Spoonacular {
 	public static function area_options() {
 		$names = array( 'African', 'American', 'British', 'Cajun', 'Caribbean', 'Chinese', 'European', 'French', 'Greek', 'Indian', 'Italian', 'Japanese', 'Korean', 'Mediterranean', 'Mexican', 'Middle Eastern', 'Spanish', 'Thai', 'Vietnamese' );
 		return array_map( function ( $name ) { return array( 'name' => $name, 'slug' => sanitize_title( $name ), 'count' => 0 ); }, $names );
+	}
+
+	/** Filters displayed only where Spoonacular can make a provider-backed decision. */
+	public static function dietary_options() {
+		$names = array(
+			'Vegetarian'  => 'vegetarian',
+			'Vegan'       => 'vegan',
+			'Gluten-free' => 'gluten-free',
+			'Dairy-free'  => 'dairy-free',
+			'Low FODMAP'  => 'low-fodmap',
+			'Ketogenic'   => 'ketogenic',
+			'Whole30'     => 'whole30',
+		);
+		$options = array();
+		foreach ( $names as $name => $slug ) {
+			$options[] = array( 'name' => $name, 'slug' => $slug, 'count' => 0 );
+		}
+		return $options;
+	}
+
+	private static function apply_dietary_filter( &$args, $dietary ) {
+		$dietary = sanitize_title( $dietary );
+		if ( 'gluten-free' === $dietary ) {
+			$args['intolerances'] = 'gluten';
+			return;
+		}
+		if ( 'dairy-free' === $dietary ) {
+			$args['intolerances'] = 'dairy';
+			return;
+		}
+		$diets = array(
+			'vegetarian' => 'vegetarian',
+			'vegan'      => 'vegan',
+			'low-fodmap' => 'low fodmap',
+			'ketogenic'  => 'ketogenic',
+			'whole30'    => 'whole30',
+		);
+		if ( isset( $diets[ $dietary ] ) ) {
+			$args['diet'] = $diets[ $dietary ];
+		}
 	}
 
 	private static function candidate( $recipe, $terms ) {
@@ -193,10 +253,44 @@ class MCF_Recipe_Spoonacular {
 			'cook_time' => ! empty( $recipe['cookingMinutes'] ) ? absint( $recipe['cookingMinutes'] ) . ' minutes' : ( ! empty( $recipe['readyInMinutes'] ) ? absint( $recipe['readyInMinutes'] ) . ' minutes total' : '' ),
 			'servings' => ! empty( $recipe['servings'] ) ? absint( $recipe['servings'] ) : '', 'allergens' => '', 'storage' => '',
 			'meal_type' => implode( ', ', (array) ( $recipe['dishTypes'] ?? array() ) ), 'cuisine' => array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $recipe['cuisines'] ?? array() ) ) ) ),
-			'dietary' => array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $recipe['diets'] ?? array() ) ) ) ), 'search_terms' => array(),
+			'dietary' => self::dietary_labels( $recipe ), 'search_terms' => array(),
 			'image' => esc_url_raw( $recipe['image'] ?? '' ), 'image_alt' => sanitize_text_field( $recipe['title'] ?? '' ), 'permalink' => '',
 			'source_url' => $source ? $source : ( $fallback ? $fallback : 'https://spoonacular.com/' ), 'source_is_original' => (bool) $source, 'provider' => self::PROVIDER,
 		);
+	}
+
+	private static function dietary_labels( $recipe ) {
+		$labels = array();
+		$known = array(
+			'vegetarian'  => 'Vegetarian',
+			'vegan'       => 'Vegan',
+			'gluten-free' => 'Gluten-free',
+			'dairy-free'  => 'Dairy-free',
+			'low-fodmap'  => 'Low FODMAP',
+			'ketogenic'   => 'Ketogenic',
+			'whole30'     => 'Whole30',
+		);
+		foreach ( (array) ( $recipe['diets'] ?? array() ) as $diet ) {
+			$slug = sanitize_title( $diet );
+			if ( isset( $known[ $slug ] ) ) {
+				$labels[ $slug ] = $known[ $slug ];
+			}
+		}
+		$flags = array(
+			'vegetarian' => 'vegetarian',
+			'vegan'      => 'vegan',
+			'glutenFree' => 'gluten-free',
+			'dairyFree'  => 'dairy-free',
+			'lowFodmap'  => 'low-fodmap',
+			'ketogenic'  => 'ketogenic',
+			'whole30'    => 'whole30',
+		);
+		foreach ( $flags as $field => $slug ) {
+			if ( ! empty( $recipe[ $field ] ) && isset( $known[ $slug ] ) ) {
+				$labels[ $slug ] = $known[ $slug ];
+			}
+		}
+		return array_values( $labels );
 	}
 
 	private static function metric_ingredient_line( $ingredient ) {

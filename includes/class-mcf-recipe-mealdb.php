@@ -153,7 +153,7 @@ class MCF_Recipe_MealDB {
 		return implode( '_', $words );
 	}
 
-	public static function find_candidates( $search, $cuisine = '' ) {
+	public static function find_candidates( $search, $dietary = '' ) {
 		$interpretation = self::interpret_search( $search );
 		/* Ingredient filters are incomplete. Search titles first, retain those
 		 * complete responses, then use a small ingredient-filter supplement. */
@@ -161,9 +161,8 @@ class MCF_Recipe_MealDB {
 		$title_ids = array_keys( $title_meals );
 		$ingredient_ids = array_values( array_diff( self::ingredient_candidate_ids( $interpretation ), $title_ids ) );
 		$ids = array_values( array_unique( array_merge( $title_ids, array_slice( $ingredient_ids, 0, 18 ) ) ) );
-		if ( $cuisine && $ids ) {
-			$data = self::request( 'filter.php', array( 'a' => self::area_name( $cuisine ) ) );
-			$ids = array_values( array_intersect( $ids, self::meal_ids( $data ) ) );
+		if ( $dietary && $ids ) {
+			$ids = array_values( array_intersect( $ids, self::dietary_ids( $dietary ) ) );
 		}
 		$ids = array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, 30 );
 		$candidates = array();
@@ -239,14 +238,19 @@ class MCF_Recipe_MealDB {
 		return $options;
 	}
 
+	/** TheMealDB only has a reliable Vegetarian category for this use case. */
+	public static function dietary_options() {
+		return array( array( 'name' => 'Vegetarian', 'slug' => 'vegetarian', 'count' => 0 ) );
+	}
+
 	private static function area_name( $slug ) {
 		foreach ( self::area_options() as $area ) { if ( $area['slug'] === sanitize_title( $slug ) ) { return $area['name']; } }
 		return sanitize_text_field( $slug );
 	}
 
-	public static function browse_candidates( $preferred_ids = array(), $limit = 24 ) {
+	public static function browse_candidates( $preferred_ids = array(), $limit = 24, $dietary = '' ) {
 		$limit = min( 24, max( 1, absint( $limit ) ) );
-		$ids = array_slice( array_values( array_unique( array_filter( array_map( array( __CLASS__, 'external_id' ), (array) $preferred_ids ) ) ) ), 0, $limit );
+		$ids = $dietary ? array_slice( self::dietary_ids( $dietary ), 0, $limit ) : array_slice( array_values( array_unique( array_filter( array_map( array( __CLASS__, 'external_id' ), (array) $preferred_ids ) ) ) ), 0, $limit );
 		if ( count( $ids ) < $limit ) {
 			$fallback_ids = array();
 			foreach ( array( 'Vegetarian', 'Beef', 'Chicken' ) as $category ) {
@@ -271,6 +275,13 @@ class MCF_Recipe_MealDB {
 			return array();
 		}
 		return array_values( array_filter( array_map( function ( $meal ) { return isset( $meal['idMeal'] ) ? absint( $meal['idMeal'] ) : 0; }, $data['meals'] ) ) );
+	}
+
+	private static function dietary_ids( $dietary ) {
+		if ( 'vegetarian' !== sanitize_title( $dietary ) ) {
+			return array();
+		}
+		return self::meal_ids( self::request( 'filter.php', array( 'c' => 'Vegetarian' ) ) );
 	}
 
 	public static function candidate( $meal ) {
@@ -455,7 +466,7 @@ class MCF_Recipe_MealDB {
 			'storage'     => '',
 			'meal_type'   => sanitize_text_field( $meal['strCategory'] ?? '' ),
 			'cuisine'     => ! empty( $meal['strArea'] ) ? array( sanitize_text_field( $meal['strArea'] ) ) : array(),
-			'dietary'     => array(),
+			'dietary'     => 'Vegetarian' === sanitize_text_field( $meal['strCategory'] ?? '' ) ? array( 'Vegetarian' ) : array(),
 			'search_terms' => array(),
 			'image'       => esc_url_raw( $meal['strMealThumb'] ?? '' ),
 			'image_alt'   => sanitize_text_field( $meal['strMeal'] ?? '' ),

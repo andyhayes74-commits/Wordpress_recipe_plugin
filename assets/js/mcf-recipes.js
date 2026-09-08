@@ -104,7 +104,6 @@
 				return;
 			}
 			[
-				{ name: 'cuisine', values: filtersData.cuisines || [] },
 				{ name: 'dietary', values: filtersData.dietary || [] }
 			].forEach(function (definition) {
 				var group = root.querySelector('[data-mcf-filter="' + definition.name + '"]');
@@ -139,9 +138,7 @@
 			if (toggle) {
 				toggle.hidden = options.length <= limit;
 				toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
-				var moreLabel = group.getAttribute('data-mcf-filter') === 'cuisine'
-					? (config.i18n.showMoreCuisines || 'Show more cuisines')
-					: (config.i18n.showMoreFilters || 'Show more');
+				var moreLabel = config.i18n.showMoreFilters || 'Show more';
 				toggle.textContent = isExpanded ? (config.i18n.showLessFilters || 'Show less') : moreLabel + ' (' + (options.length - limit) + ')';
 			}
 		}

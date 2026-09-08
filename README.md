@@ -8,6 +8,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 
 | Version | Branch | Status |
 | --- | --- | --- |
+| v1.3.11 | `v1.3.11-dietary-filters` | Current release candidate. Replaces cuisine browsing with provider-backed dietary filters. |
 | v1.3.10 | `v1.3.10-spoonacular-full-metric` | Current release candidate. Converts remaining US volume, weight and oven-temperature units. |
 | v1.3.9 | `v1.3.9-spoonacular-metric` | Earlier metric-data candidate. Requests and displays metric Spoonacular ingredient measures. |
 | v1.3.8 | `v1.3.8-spoonacular-providers` | Earlier provider-controls candidate. Adds secure Spoonacular integration and provider enable/disable switches. |
@@ -19,7 +20,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.10.zip](releases/marcham-recipe-plugin-v1.3.10.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.11.zip](releases/marcham-recipe-plugin-v1.3.11.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -30,7 +31,7 @@ The first working version includes:
 - Admin recipe editing with draft, pending-review and published states
 - CSV import with optional image URL download into the Media Library
 - Elementor-compatible [mcf_recipes] shortcode
-- Searchable TheMealDB or Spoonacular recipe cards with cuisine filters
+- Searchable TheMealDB or Spoonacular recipe cards with dietary filters
 - In-page recipe detail panel
 - Original-recipe source link, with a provider page fallback
 - Browser print / save-as-PDF output for the selected recipe
@@ -45,10 +46,10 @@ The first working version includes:
 - Numbered single-line method fields are split into readable ordered steps when imported or displayed
 - LiteSpeed JS-delay exclusions for the recipe interface while allowing the surrounding page to remain cached
 - Marcham concept visual treatment with a warm cream canvas, green/orange hierarchy, rounded cards and leaf decoration
-- Browse-by-cuisine chip controls that work well on touch screens and keyboard navigation
+- Browse-by-dietary chip controls that work well on touch screens and keyboard navigation
 - Two-column recipe-card presentation on larger screens with a compact, single-column mobile layout
 - Selected-recipe panel styled as an in-page recipe feature with a prominent image, selected badge and action buttons
-- Cuisine choices shown with the five most-used choices first and the rest expandable
+- Dietary choices shown with the first five options visible and the rest expandable
 - Relevance-ranked ingredient search using the active provider's candidates, ingredient meaning, recipe titles and method text rather than every incidental word
 - Multi-term ingredient searches use an AND-style match, so “carrot beef” favours recipes matching both terms
 - Dynamic, server-side OpenAI relevance search with persistent, reversible learned decisions
@@ -68,7 +69,14 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.10.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.11.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.11: Dietary filters
+
+- The public filter section now offers dietary options instead of cuisines.
+- Spoonacular offers Vegetarian, Vegan, Gluten-free, Dairy-free, Low FODMAP, Ketogenic and Whole30. Gluten-free and Dairy-free use Spoonacular's intolerance filtering; the remaining options use its diet filters.
+- TheMealDB offers Vegetarian only, because its other dietary classifications are not reliable enough to show as filters.
+- Recipe cards continue to show a recipe's cuisine in the card, while Spoonacular dietary labels are also displayed where available.
 
 ## v1.3.10: Complete UK metric display
 
@@ -106,7 +114,7 @@ Back up the WordPress files and database first. In **Plugins → Add New Plugin 
 - Opening the recipe page now shows the most-clicked MealDB recipes first, using only the existing global click records.
 - Recipes with no clicks do not disappear: the rest of the 24-card browse page is filled from a varied Vegetarian, Beef and Chicken fallback selection.
 - The search page continues to use query-specific popularity only after suitability matching, so popular recipes cannot distort an ingredient search.
-- The filter control now says “Show more cuisines”, making clear that its number is a count of extra cuisine options—not recipes.
+- The filter control shows the number of additional dietary options—not recipes.
 
 ## v1.3.4: Search normalisation and complete title matches
 
@@ -147,7 +155,7 @@ For a potato search, this keeps potato soup, jacket potatoes, roast potatoes, Bu
 - Opening a recipe records a query-specific and global click count. Popularity only breaks ties within the AI-approved strong/other groups, so an unsuitable popular recipe cannot be promoted.
 - Search diagnostics now display TheMealDB candidate and selected titles, while Search learning displays most-clicked meals.
 
-The public page continues to show recipe details in the browser, with an original-source link and print/save-as-PDF. Dietary filtering is not presented for MealDB results because the source does not provide a reliable classification for this workflow.
+The public page continues to show recipe details in the browser, with an original-source link and print/save-as-PDF. Spoonacular dietary filters are provider-backed; TheMealDB only exposes its Vegetarian category, so no broader MealDB allergy or diet claim is made.
 
 ## v1.2.0: learned AI search and visible progress
 
@@ -165,7 +173,7 @@ The AI cannot find missing recipes or candidates excluded by TheMealDB ingredien
 ### Run your own search checks
 
 1. Open **Recipe Library → Settings**, tick **Search debug logging**, and save.
-2. Search the public recipe page for `carrot`, `carrots`, `carrot beef`, and an ingredient absent from your library. Keep cuisine/dietary on All for the first checks.
+2. Search the public recipe page for `carrot`, `carrots`, `carrot beef`, and an ingredient absent from your library. Keep dietary on All for the first checks.
 3. Open **Recipe Library → Search diagnostics** and refresh it after searching. Expand each row to inspect the search, configured model, source, reason, duration, HTTP status, candidate count and candidate/selected recipe IDs and titles.
 4. Repeat an identical search: it should say `learned` if the first AI decision succeeded. A valid empty decision is also learned. Add or edit a candidate recipe and repeat the affected search to check that it receives a fresh AI decision.
 5. Turn logging off after testing. Use **Clear debug log** to remove retained entries immediately.

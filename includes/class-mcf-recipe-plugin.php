@@ -191,9 +191,9 @@ class MCF_Recipe_Plugin {
 			</form>
 			<div class="mcf-recipe-filters" aria-label="<?php echo esc_attr( $text['filters_label'] ); ?>">
 				<div class="mcf-recipe-filter-group">
-					<strong><?php echo esc_html( $text['cuisine_label'] ); ?></strong>
-					<div class="mcf-recipe-filter-chips" data-mcf-filter="cuisine">
-						<button type="button" class="is-active" data-mcf-filter-option="" aria-pressed="true"><?php echo esc_html( $text['all_cuisines'] ); ?></button>
+					<strong><?php echo esc_html( $text['dietary_label'] ); ?></strong>
+					<div class="mcf-recipe-filter-chips" data-mcf-filter="dietary">
+						<button type="button" class="is-active" data-mcf-filter-option="" aria-pressed="true"><?php echo esc_html( $text['all_dietary'] ); ?></button>
 					</div>
 					<button type="button" class="mcf-recipe-filter-toggle" data-mcf-filter-toggle hidden aria-expanded="false"><?php echo esc_html( $text['show_more_filters'] ); ?></button>
 				</div>

@@ -8,7 +8,7 @@ class MCF_Recipe_Rest {
 	public static function init() { add_action( 'rest_api_init', array( __CLASS__, 'routes' ) ); }
 
 	public static function routes() {
-		register_rest_route( self::NAMESPACE, '/recipes', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'list_recipes' ), 'permission_callback' => '__return_true', 'args' => array( 'search' => array( 'sanitize_callback' => 'sanitize_text_field' ), 'ai' => array( 'sanitize_callback' => 'rest_sanitize_boolean' ), 'cuisine' => array( 'sanitize_callback' => 'sanitize_title' ), 'page' => array( 'default' => 1, 'sanitize_callback' => 'absint' ), 'per_page' => array( 'default' => 8, 'sanitize_callback' => 'absint' ) ) ) );
+		register_rest_route( self::NAMESPACE, '/recipes', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'list_recipes' ), 'permission_callback' => '__return_true', 'args' => array( 'search' => array( 'sanitize_callback' => 'sanitize_text_field' ), 'ai' => array( 'sanitize_callback' => 'rest_sanitize_boolean' ), 'dietary' => array( 'sanitize_callback' => 'sanitize_title' ), 'page' => array( 'default' => 1, 'sanitize_callback' => 'absint' ), 'per_page' => array( 'default' => 8, 'sanitize_callback' => 'absint' ) ) ) );
 		register_rest_route( self::NAMESPACE, '/recipes/(?P<id>[a-z0-9:-]+)', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'get_recipe' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NAMESPACE, '/recipes/(?P<id>[a-z0-9:-]+)/click', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'record_click' ), 'permission_callback' => '__return_true' ) );
 	}
@@ -17,7 +17,7 @@ class MCF_Recipe_Rest {
 		$started = microtime( true );
 		self::prevent_cache();
 		$search = sanitize_text_field( $request->get_param( 'search' ) );
-		$cuisine = sanitize_title( $request->get_param( 'cuisine' ) );
+		$dietary = sanitize_title( $request->get_param( 'dietary' ) );
 		$page = max( 1, absint( $request->get_param( 'page' ) ) );
 		$per_page = min( 24, max( 1, absint( $request->get_param( 'per_page' ) ) ) );
 		$ids = array(); $other_ids = array(); $source = 'browse'; $reason = 'browse'; $query_key = ''; $candidate_count = 0; $ai_duration = 0; $diagnostics = array( 'source' => 'browse', 'reason' => 'browse', 'page' => $page );
@@ -27,14 +27,14 @@ class MCF_Recipe_Rest {
 		if ( is_wp_error( $provider ) ) {
 			$source = 'provider_error'; $reason = $provider->get_error_code();
 		} elseif ( $search ) {
-			$found = $provider::find_candidates( $search, $cuisine );
+			$found = $provider::find_candidates( $search, $dietary );
 			if ( is_wp_error( $found ) ) {
 				$source = 'provider_error'; $reason = $found->get_error_code();
 			} else {
 				$candidates = $found['candidates'];
 				$candidate_count = count( $candidates );
 				$terms = $found['interpretation']['terms'];
-				$query_key = MCF_Recipe_Learning::key( $terms, $cuisine );
+				$query_key = MCF_Recipe_Learning::key( $terms, $dietary );
 				$fingerprint = hash( 'sha256', wp_json_encode( array( MCF_Recipe_Learning::POLICY_VERSION, $candidates ) ) );
 				$diagnostics['candidate_count'] = $candidate_count;
 				$diagnostics['candidate_ids'] = wp_list_pluck( $candidates, 'id' );
@@ -72,7 +72,7 @@ class MCF_Recipe_Rest {
 				}
 			}
 		} elseif ( ! is_wp_error( $provider ) ) {
-			$browse = $provider::browse_candidates( MCF_Recipe_Learning::global_popular_ids( 24 ) );
+			$browse = $provider::browse_candidates( MCF_Recipe_Learning::global_popular_ids( 24 ), 24, $dietary );
 			foreach ( $browse as $recipe ) { $meal_map[ (string) $recipe['id'] ] = $recipe; $ids[] = (string) $recipe['id']; }
 		}
 
@@ -99,8 +99,8 @@ class MCF_Recipe_Rest {
 			$diagnostics['duration_ms'] = round( ( microtime( true ) - $started ) * 1000 ); $diagnostics['result_ids'] = $ids; $diagnostics['other_ids'] = $other_ids; MCF_Recipe_Debug::record( $search, $diagnostics );
 		}
 		$status = 'local' === $source ? 'local' : ( 'provider_error' === $source ? 'mealdb_error' : ( $search && ! $ids ? 'no_strong_matches' : 'ok' ) );
-		$areas = ! is_wp_error( $provider ) ? $provider::area_options() : array();
-		return rest_ensure_response( array( 'recipes' => $recipes, 'other_recipes' => $others, 'search_status' => $status, 'search_source' => $source, 'search_key' => $query_key, 'page' => $page, 'pages' => $pages, 'total' => $total, 'filters' => array( 'cuisines' => $areas, 'dietary' => array() ) ) );
+		$dietary_options = ! is_wp_error( $provider ) ? $provider::dietary_options() : array();
+		return rest_ensure_response( array( 'recipes' => $recipes, 'other_recipes' => $others, 'search_status' => $status, 'search_source' => $source, 'search_key' => $query_key, 'page' => $page, 'pages' => $pages, 'total' => $total, 'filters' => array( 'dietary' => $dietary_options ) ) );
 	}
 
 	private static function deterministic_result_ids( $candidates ) {
