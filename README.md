@@ -8,6 +8,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 
 | Version | Branch | Status |
 | --- | --- | --- |
+| v1.3.13 | `v1.3.13-centred-vegetable-loader` | Current release candidate. Centres and enlarges the vegetable animation, with its text below. |
 | v1.3.12 | `v1.3.12-vegetable-loader` | Current release candidate. Replaces the generic loading spinner with an upright vegetable orbit. |
 | v1.3.11 | `v1.3.11-dietary-filters` | Current release candidate. Replaces cuisine browsing with provider-backed dietary filters. |
 | v1.3.10 | `v1.3.10-spoonacular-full-metric` | Current release candidate. Converts remaining US volume, weight and oven-temperature units. |
@@ -21,7 +22,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.12.zip](releases/marcham-recipe-plugin-v1.3.12.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.13.zip](releases/marcham-recipe-plugin-v1.3.13.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -70,7 +71,12 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.12.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.13.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.13: Centred loading state
+
+- The vegetable loading state no longer has a bordered or coloured container.
+- Its animation is larger and centred, with the loading message beneath it.
 
 ## v1.3.12: Vegetable loading animation
 

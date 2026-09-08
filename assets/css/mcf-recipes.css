@@ -323,15 +323,16 @@
 
 .mcf-recipe-search-progress {
 	display: flex;
+	flex-direction: column;
 	align-items: center;
 	gap: 12px;
-	margin: 0 0 16px;
-	padding: 13px 16px;
-	border: 1px solid rgba(35, 108, 65, .18);
-	border-radius: 14px;
-	background: #f1f6ed;
+	margin: 4px auto 22px;
+	padding: 12px 16px 16px;
+	border: 0;
+	background: transparent;
 	color: var(--mcf-green);
-	box-shadow: 0 6px 14px rgba(23, 61, 39, .07);
+	box-shadow: none;
+	text-align: center;
 }
 
 .mcf-recipe-search-progress[hidden] {
@@ -353,11 +354,15 @@
 	font-size: .84rem;
 }
 
+.mcf-recipe-search-progress > span:last-child {
+	max-width: 34rem;
+}
+
 .mcf-recipe-search-progress__vegetable-loader {
 	position: relative;
-	width: 52px;
-	height: 52px;
-	flex: 0 0 52px;
+	width: 118px;
+	height: 118px;
+	flex: 0 0 118px;
 }
 
 .mcf-recipe-search-progress__vegetable-orbit {
@@ -370,10 +375,10 @@
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 21px;
-	height: 21px;
-	margin: -10.5px;
-	transform-origin: 10.5px 10.5px;
+	width: 44px;
+	height: 44px;
+	margin: -22px;
+	transform-origin: 22px 22px;
 }
 
 .mcf-recipe-search-progress__vegetable::before {
@@ -381,36 +386,36 @@
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 18px;
-	height: 18px;
+	width: 39px;
+	height: 39px;
 	border-radius: 50%;
 	background: #fffaf0;
-	box-shadow: 0 2px 5px rgba(23, 61, 39, .14);
+	box-shadow: 0 3px 8px rgba(23, 61, 39, .14);
 	transform: translate(-50%, -50%);
 }
 
 .mcf-recipe-search-progress__vegetable svg {
 	position: relative;
 	display: block;
-	width: 21px;
-	height: 21px;
+	width: 44px;
+	height: 44px;
 	transform: rotate(var(--mcf-vegetable-upright, 0deg));
 	animation: mcf-recipe-vegetable-counter-orbit 3.2s linear infinite;
 }
 
 .mcf-recipe-search-progress__vegetable--carrot {
 	--mcf-vegetable-upright: 0deg;
-	transform: rotate(0deg) translateY(-18px);
+	transform: rotate(0deg) translateY(-35px);
 }
 
 .mcf-recipe-search-progress__vegetable--broccoli {
 	--mcf-vegetable-upright: -120deg;
-	transform: rotate(120deg) translateY(-18px);
+	transform: rotate(120deg) translateY(-35px);
 }
 
 .mcf-recipe-search-progress__vegetable--pepper {
 	--mcf-vegetable-upright: -240deg;
-	transform: rotate(240deg) translateY(-18px);
+	transform: rotate(240deg) translateY(-35px);
 }
 
 .mcf-recipe-library[aria-busy="true"] .mcf-recipe-search button {
