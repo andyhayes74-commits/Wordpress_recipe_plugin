@@ -8,6 +8,9 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 
 | Version | Branch | Status |
 | --- | --- | --- |
+| v1.4.2 | `v1.4.2-pdf-upload-fix` | Current release candidate. Retains server-generated PDFs while using the built-in branded text header instead of bundling the large logo image, to restore normal WordPress update uploads. |
+| v1.4.1 | `v1.4.1-compatible-pdf-archive` | Current release candidate. Repackages the branded-PDF release in the conservative ZIP format required by this WordPress host. |
+| v1.4.0 | `v1.4.0-branded-recipe-pdfs` | Current release candidate. Downloads a server-generated branded recipe PDF instead of opening the browser print UI. |
 | v1.3.13 | `v1.3.13-centred-vegetable-loader` | Current release candidate. Centres and enlarges the vegetable animation, with its text below. |
 | v1.3.12 | `v1.3.12-vegetable-loader` | Current release candidate. Replaces the generic loading spinner with an upright vegetable orbit. |
 | v1.3.11 | `v1.3.11-dietary-filters` | Current release candidate. Replaces cuisine browsing with provider-backed dietary filters. |
@@ -22,7 +25,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.13.zip](releases/marcham-recipe-plugin-v1.3.13.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.4.2.zip](releases/marcham-recipe-plugin-v1.4.2.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -36,7 +39,7 @@ The first working version includes:
 - Searchable TheMealDB or Spoonacular recipe cards with dietary filters
 - In-page recipe detail panel
 - Original-recipe source link, with a provider page fallback
-- Browser print / save-as-PDF output for the selected recipe
+- Branded server-generated PDF download for the selected recipe
 - Settings-based typography, colours, spacing and corner-radius controls
 - Editable visitor-facing wording for the complete recipe-library interface
 - REST responses marked as non-cacheable so published/imported recipes appear without waiting for LiteSpeed cache expiry
@@ -71,7 +74,24 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.13.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.4.2.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.4.2: PDF upload compatibility
+
+- The PDF generator remains in the plugin, but the supplied high-resolution logo file is no longer bundled in the installation archive.
+- PDFs use the same Marcham green and orange branded text header while this upload compatibility fix is in place.
+- This deliberately returns the release package to the same archive structure as the last working upload, with only the PHP PDF generator added.
+
+## v1.4.1: WordPress-compatible archive
+
+- The v1.4.0 plugin files are repackaged without extended ZIP metadata or compression, avoiding the `Incompatible Archive` validator issue on affected WordPress hosts.
+
+## v1.4.0: Branded recipe PDF downloads
+
+- The recipe action now downloads a generated A4 PDF rather than opening the browser print dialog.
+- Every PDF uses a fixed Marcham Community Fridge header, footer, palette and layout, with the supplied logo bundled inside the plugin.
+- Long recipes flow across additional branded pages automatically. The PDF includes recipe details, dietary labels, ingredients, method, relevant notes and the source URL.
+- The PDF is generated server-side by the plugin. Recipe details and provider API keys are never sent to a third-party PDF service.
 
 ## v1.3.13: Centred loading state
 
