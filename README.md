@@ -8,10 +8,11 @@ The plugin helps visitors find practical recipes for surplus ingredients, then a
 
 | Version | Branch | Status |
 | --- | --- | --- |
-| v1.3.2 | `v1.3.2-title-first-matching` | Current release candidate. Adds title-first MealDB candidate discovery and stricter treatment of side ingredients. |
+| v1.3.3 | `v1.3.3-mealdb-reliability` | Current release candidate. Improves MealDB matching speed and provides a safe local fallback when AI is unavailable. |
+| v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built `marcham-recipe-plugin-v1.3.2.zip` release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.3.zip](releases/marcham-recipe-plugin-v1.3.3.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -60,7 +61,14 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.2.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.3.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.3: MealDB reliability and fallback
+
+- Title-search responses are used directly during candidate scoring, avoiding repeat lookups for those recipes. Ingredient-filter-only candidates are limited to 18, which reduces the first uncached-search delay.
+- A title-led recipe is strongly favoured. A meal that merely includes one carrot alongside several other ingredients is a secondary suggestion, not a primary carrot recipe.
+- If OpenAI matching is unavailable, rate-limited or temporarily fails, the plugin returns its deterministic primary and secondary MealDB matches instead of an empty result set.
+- The matching policy version is bumped so earlier learned decisions are refreshed automatically.
 
 ## v1.3.2: title-first MealDB matching
 
@@ -97,7 +105,7 @@ The public page continues to show recipe details in the browser, with AI modific
 - A recipe's candidate data is fingerprinted. When a new or edited recipe becomes relevant to a search, that search's learned decision is automatically refreshed on its next use. Unrelated decisions remain reusable.
 - Multi-ingredient searches are treated as a complete set: `carrots and beef` must use both meaningfully. A carrot soup cannot be returned as either a strong or weaker result for that search.
 - The AI receives at most 30 local candidates, not the full library. It corrects minor spelling mistakes and returns only validated candidate IDs.
-- With a configured key, a failed AI search is shown as an error and is never silently replaced by a weaker local ranking. Without a configured key, the plugin clearly labels its title/main-term local search.
+- With a configured key, a failed AI search falls back to deterministic primary and secondary results. Without a configured key, the plugin uses the same deterministic result set and clearly labels it as a local search.
 - The recipe page shows a search-in-progress panel while a search is running, and changes its text if the lookup takes longer than a few seconds. All public text is editable under Settings → Search relevance messages.
 - Administrators can review learned decisions in **Recipe Library → Search learning** and clear them all if needed. This is separate from the existing, opt-in **Search diagnostics** log.
 

@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 class MCF_Recipe_Learning {
 	const OPTION_VERSION = 'mcf_recipe_learning_version';
 	const VERSION = '2.1';
-	const POLICY_VERSION = '3.1';
+	const POLICY_VERSION = '3.2';
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );

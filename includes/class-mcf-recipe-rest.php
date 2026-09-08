@@ -37,7 +37,9 @@ class MCF_Recipe_Rest {
 				$diagnostics['candidate_count'] = $candidate_count;
 				$diagnostics['candidate_ids'] = wp_list_pluck( $candidates, 'id' );
 				if ( ! MCF_Recipe_Admin::get_openai_key() || ! rest_sanitize_boolean( $request->get_param( 'ai' ) ) ) {
-					$source = 'ai_not_configured'; $reason = 'missing_key';
+					$source = 'local'; $reason = 'deterministic';
+					$ranked = self::deterministic_result_ids( $candidates );
+					$ids = $ranked['recipe_ids']; $other_ids = $ranked['other_recipe_ids'];
 				} else {
 					$outcome = MCF_Recipe_Learning::find( $query_key, $fingerprint, MCF_Recipe_Admin::get_openai_model() );
 					if ( ! $outcome ) {
@@ -48,9 +50,12 @@ class MCF_Recipe_Rest {
 						}
 					}
 					if ( is_wp_error( $outcome ) ) {
-						$source = 'ai_error'; $reason = $outcome->get_error_code();
+						/* A temporary AI failure must not hide usable MealDB recipes. */
+						$source = 'local'; $reason = 'ai_' . $outcome->get_error_code();
 						$error_data = $outcome->get_error_data();
 						$diagnostics['http_status'] = is_array( $error_data ) && isset( $error_data['http_status'] ) ? $error_data['http_status'] : 0;
+						$ranked = self::deterministic_result_ids( $candidates );
+						$ids = $ranked['recipe_ids']; $other_ids = $ranked['other_recipe_ids'];
 					} else {
 						$source = $outcome['source']; $reason = $outcome['recipe_ids'] ? 'matched' : 'no_strong_matches';
 						$ids = MCF_Recipe_Learning::order_by_popularity( $outcome['recipe_ids'], $query_key );
@@ -88,8 +93,25 @@ class MCF_Recipe_Rest {
 		if ( $search ) {
 			$diagnostics['duration_ms'] = round( ( microtime( true ) - $started ) * 1000 ); $diagnostics['result_ids'] = $ids; $diagnostics['other_ids'] = $other_ids; MCF_Recipe_Debug::record( $search, $diagnostics );
 		}
-		$status = 'ai_error' === $source ? 'ai_error' : ( 'ai_not_configured' === $source ? 'ai_not_configured' : ( 'mealdb_error' === $source ? 'mealdb_error' : ( $search && ! $ids ? 'no_strong_matches' : 'ok' ) ) );
+		$status = 'local' === $source ? 'local' : ( 'mealdb_error' === $source ? 'mealdb_error' : ( $search && ! $ids ? 'no_strong_matches' : 'ok' ) );
 		return rest_ensure_response( array( 'recipes' => $recipes, 'other_recipes' => $others, 'search_status' => $status, 'search_source' => $source, 'search_key' => $query_key, 'page' => $page, 'pages' => $pages, 'total' => $total, 'filters' => array( 'cuisines' => MCF_Recipe_MealDB::area_options(), 'dietary' => array() ) ) );
+	}
+
+	private static function deterministic_result_ids( $candidates ) {
+		$strong = array();
+		$other = array();
+		foreach ( (array) $candidates as $candidate ) {
+			$id = isset( $candidate['id'] ) ? absint( $candidate['id'] ) : 0;
+			if ( ! $id ) {
+				continue;
+			}
+			if ( 'primary' === ( $candidate['match_band'] ?? '' ) ) {
+				$strong[] = $id;
+			} elseif ( 'secondary' === ( $candidate['match_band'] ?? '' ) ) {
+				$other[] = $id;
+			}
+		}
+		return array( 'recipe_ids' => array_values( array_unique( $strong ) ), 'other_recipe_ids' => array_values( array_unique( $other ) ) );
 	}
 
 	public static function get_recipe( WP_REST_Request $request ) {

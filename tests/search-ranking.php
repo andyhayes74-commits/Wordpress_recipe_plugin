@@ -6,6 +6,7 @@ if ( PHP_SAPI !== 'cli' ) {
 define( 'ABSPATH', __DIR__ );
 define( 'MINUTE_IN_SECONDS', 60 );
 define( 'DAY_IN_SECONDS', 86400 );
+define( 'HOUR_IN_SECONDS', 3600 );
 class WP_Error {
 	private $code;
 	private $data;
@@ -43,8 +44,14 @@ function wp_remote_retrieve_response_code( $value ) { return $value['status']; }
 function wp_remote_retrieve_body( $value ) { return $value['body']; }
 require __DIR__ . '/../includes/class-mcf-recipe-rest.php';
 require __DIR__ . '/../includes/class-mcf-recipe-debug.php';
+require __DIR__ . '/../includes/class-mcf-recipe-mealdb.php';
 function invoke( $method, ...$args ) {
 	$reflection = new ReflectionMethod( 'MCF_Recipe_Rest', $method );
+	$reflection->setAccessible( true );
+	return $reflection->invokeArgs( null, $args );
+}
+function invoke_mealdb( $method, ...$args ) {
+	$reflection = new ReflectionMethod( 'MCF_Recipe_MealDB', $method );
 	$reflection->setAccessible( true );
 	return $reflection->invokeArgs( null, $args );
 }
@@ -77,6 +84,14 @@ foreach ( array(
 $candidates = array( array( 'id' => 1, 'title' => 'Carrot soup', 'description' => 'Uses plenty of carrots', 'main_search_terms' => array( 'carrot' ), 'ingredients' => array( '500 g carrots' ) ) );
 $banded = invoke( 'validate_search_decision', array( 'normalised_terms' => array( 'potato' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 2, 3 ), 'other_recipe_ids' => array( 1 ) ), array( array( 'id' => 1, 'match_band' => 'primary' ), array( 'id' => 2, 'match_band' => 'secondary' ), array( 'id' => 3, 'match_band' => 'incidental' ) ) );
 expect( $banded['recipe_ids'] === array() && $banded['other_recipe_ids'] === array( 1, 2 ), 'Deterministic match bands prevent weak primary results' );
+$carrot_soup = invoke_mealdb( 'score_candidate', array( 'title' => 'Moroccan Carrot Soup', 'ingredients' => array( '500 g carrots', '1 onion', '500 ml vegetable stock' ), 'method' => array( 'Cook the carrots until soft.', 'Blend the carrots with the stock.' ) ), array( 'carrot' ) );
+$carrot_side = invoke_mealdb( 'score_candidate', array( 'title' => 'Corned Beef and Cabbage', 'ingredients' => array( '500 g corned beef', '1 carrot', '1 small cabbage', '2 potatoes' ), 'method' => array( 'Simmer the vegetables with the beef.' ) ), array( 'carrot' ) );
+$carrot_beef = invoke_mealdb( 'score_candidate', array( 'title' => 'Beef and Carrot Stew', 'ingredients' => array( '500 g beef', '500 g carrots', '1 onion', '500 ml stock' ), 'method' => array( 'Brown the beef and carrots.', 'Simmer the beef and carrots in stock.' ) ), array( 'carrot', 'beef' ) );
+expect( 'primary' === $carrot_soup['match_band'], 'Carrot-led title is a primary candidate' );
+expect( 'primary' !== $carrot_side['match_band'], 'A side carrot ingredient is not a primary carrot match' );
+expect( 'primary' === $carrot_beef['match_band'], 'Carrot and beef title can satisfy both search terms' );
+$fallback = invoke( 'deterministic_result_ids', array( array( 'id' => 1, 'match_band' => 'primary' ), array( 'id' => 2, 'match_band' => 'secondary' ), array( 'id' => 3, 'match_band' => 'incidental' ) ) );
+expect( $fallback['recipe_ids'] === array( 1 ) && $fallback['other_recipe_ids'] === array( 2 ), 'Local fallback preserves strong and secondary matches' );
 $carrot_interpretation = array( 'ingredients' => array( 'Carrot' ), 'residual' => array(), 'terms' => array( 'carrot' ) );
 $beef_interpretation = array( 'ingredients' => array( 'Beef' ), 'residual' => array(), 'terms' => array( 'beef' ) );
 $response = decision_response( $empty );

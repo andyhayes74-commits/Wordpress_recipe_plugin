@@ -129,29 +129,20 @@ class MCF_Recipe_MealDB {
 
 	public static function find_candidates( $search, $cuisine = '' ) {
 		$interpretation = self::interpret_search( $search );
-		$ids = array();
-		if ( count( $interpretation['ingredients'] ) > 1 && 'v2' === self::version() ) {
-			$data = self::request( 'filter.php', array( 'i' => implode( ',', array_map( array( __CLASS__, 'term' ), $interpretation['ingredients'] ) ) ) );
-			$ids = self::meal_ids( $data );
-		} elseif ( $interpretation['ingredients'] ) {
-			foreach ( $interpretation['ingredients'] as $ingredient ) {
-				$data = self::request( 'filter.php', array( 'i' => self::term( $ingredient ) ) );
-				$current = self::meal_ids( $data );
-				$ids = $ids ? array_values( array_intersect( $ids, $current ) ) : $current;
-			}
-		}
-		if ( ! $ids && $interpretation['residual'] ) {
-			$data = self::request( 'search.php', array( 's' => implode( ' ', $interpretation['residual'] ) ) );
-			$ids = self::meal_ids( $data );
-		}
+		/* Ingredient filters are incomplete. Search titles first, retain those
+		 * complete responses, then use a small ingredient-filter supplement. */
+		$title_meals = self::title_candidate_meals( $search, $interpretation );
+		$title_ids = array_keys( $title_meals );
+		$ingredient_ids = array_values( array_diff( self::ingredient_candidate_ids( $interpretation ), $title_ids ) );
+		$ids = array_values( array_unique( array_merge( $title_ids, array_slice( $ingredient_ids, 0, 18 ) ) ) );
 		if ( $cuisine && $ids ) {
 			$data = self::request( 'filter.php', array( 'a' => self::area_name( $cuisine ) ) );
 			$ids = array_values( array_intersect( $ids, self::meal_ids( $data ) ) );
 		}
-		$ids = array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, 60 );
+		$ids = array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, 30 );
 		$candidates = array();
 		foreach ( $ids as $id ) {
-			$meal = self::meal( $id );
+			$meal = isset( $title_meals[ $id ] ) ? $title_meals[ $id ] : self::meal( $id );
 			if ( is_array( $meal ) ) {
 				$candidate = self::score_candidate( self::candidate( $meal ), $interpretation['terms'] );
 				// A recipe that only contains the term incidentally is not a
@@ -171,6 +162,45 @@ class MCF_Recipe_MealDB {
 		$candidates = array_slice( $candidates, 0, 30 );
 		$ids = array_values( array_map( 'absint', wp_list_pluck( $candidates, 'id' ) ) );
 		return array( 'interpretation' => $interpretation, 'ids' => $ids, 'candidates' => $candidates );
+	}
+
+	private static function title_candidate_meals( $search, $interpretation ) {
+		$queries = array( sanitize_text_field( $search ) );
+		foreach ( array_merge( (array) $interpretation['ingredients'], (array) $interpretation['residual'] ) as $term ) {
+			$queries[] = sanitize_text_field( $term );
+		}
+		$meals = array();
+		foreach ( array_values( array_unique( array_filter( $queries ) ) ) as $query ) {
+			$data = self::request( 'search.php', array( 's' => $query ) );
+			if ( is_wp_error( $data ) || empty( $data['meals'] ) || ! is_array( $data['meals'] ) ) {
+				continue;
+			}
+			foreach ( $data['meals'] as $meal ) {
+				$id = isset( $meal['idMeal'] ) ? absint( $meal['idMeal'] ) : 0;
+				if ( $id && is_array( $meal ) ) {
+					$meals[ $id ] = $meal;
+				}
+			}
+		}
+		return $meals;
+	}
+
+	private static function ingredient_candidate_ids( $interpretation ) {
+		$ingredients = (array) $interpretation['ingredients'];
+		if ( ! $ingredients ) {
+			return array();
+		}
+		if ( count( $ingredients ) > 1 && 'v2' === self::version() ) {
+			$data = self::request( 'filter.php', array( 'i' => implode( ',', array_map( array( __CLASS__, 'term' ), $ingredients ) ) ) );
+			return self::meal_ids( $data );
+		}
+		$ids = array();
+		foreach ( $ingredients as $ingredient ) {
+			$data = self::request( 'filter.php', array( 'i' => self::term( $ingredient ) ) );
+			$current = self::meal_ids( $data );
+			$ids = $ids ? array_values( array_intersect( $ids, $current ) ) : $current;
+		}
+		return $ids;
 	}
 
 	public static function area_options() {
@@ -262,6 +292,7 @@ class MCF_Recipe_MealDB {
 
 	private static function score_term( $candidate, $term ) {
 		$title_match = self::has_term( $candidate['title'], $term );
+		$title_led_match = self::title_is_led_match( $candidate['title'], $term );
 		$ingredients = isset( $candidate['ingredients'] ) && is_array( $candidate['ingredients'] ) ? $candidate['ingredients'] : array();
 		$method = isset( $candidate['method'] ) && is_array( $candidate['method'] ) ? $candidate['method'] : array();
 		$matching_lines = array();
@@ -276,7 +307,7 @@ class MCF_Recipe_MealDB {
 		}
 		$ingredient_count = count( $ingredients );
 		$ratio = $ingredient_count ? count( $matching_lines ) / $ingredient_count : 0;
-		$score = $title_match ? 80 : 0;
+		$score = $title_led_match ? 100 : ( $title_match ? 30 : 0 );
 		$incidental_only = true;
 		foreach ( $matching_lines as $line ) {
 			$incidental = (bool) preg_match( '/\b(?:garnish|to taste|as needed|sprinkle|pinch|optional)\b/i', $line );
@@ -286,9 +317,9 @@ class MCF_Recipe_MealDB {
 			$line_has_quantity = (bool) preg_match( '/\b\d+(?:[.,]\d+)?\b|\b(?:small|medium|large|handful|bunch|can|tin|packet|pack|kg|g|ml|litre|liter|tbsp|tsp)\b/i', $line );
 			$score += $incidental ? 4 : ( $line_has_quantity ? 24 : 14 );
 		}
-		if ( $ratio >= 0.20 ) {
+		if ( $ratio >= 0.35 ) {
 			$score += 25;
-		} elseif ( $ratio >= 0.15 ) {
+		} elseif ( $ratio >= 0.20 ) {
 			$score += 10;
 		} elseif ( $ratio >= 0.10 ) {
 			$score += 5;
@@ -297,13 +328,28 @@ class MCF_Recipe_MealDB {
 		if ( $incidental_only && ! $title_match ) {
 			$score = min( $score, 12 );
 		}
-		$primary = $title_match || $ratio >= 0.15 || ( $ratio >= 0.10 && $method_mentions >= 3 );
-		$secondary = $primary || $ratio >= 0.10 || $method_mentions >= 2;
+		/* A single ingredient in a four-item recipe is useful, but not enough
+		 * to call the dish ingredient-led. It remains a secondary suggestion. */
+		$primary = $title_led_match || $ratio >= 0.35 || ( $ratio >= 0.20 && $method_mentions >= 3 );
+		$secondary = $primary || $title_match || $ratio >= 0.10 || $method_mentions >= 2;
 		return array(
 			'score'   => $score,
 			'matched' => $title_match || (bool) $matching_lines,
 			'band'    => $primary ? 'primary' : ( $secondary ? 'secondary' : 'incidental' ),
 		);
+	}
+
+	private static function title_is_led_match( $title, $term ) {
+		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! $words ) {
+			return false;
+		}
+		$last = array_pop( $words );
+		$words[] = preg_quote( $last, '/' ) . 's?';
+		$term_pattern = implode( '[\\s_-]+', $words );
+		/* Allow short qualifiers, but reject a late side ingredient in a long title. */
+		$pattern = '/^\\s*(?:[a-z0-9]+[\\s_-]+){0,2}' . $term_pattern . '(?![a-z])/i';
+		return (bool) preg_match( $pattern, (string) $title );
 	}
 
 	private static function has_term( $text, $term ) {
