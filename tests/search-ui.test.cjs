@@ -3,12 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 class Element {
-  constructor() { this.attrs = {}; this.handlers = {}; this.innerHTML = ''; this.hidden = false; this.dataset = {}; this.classList = {add() {}, remove() {}}; }
+  constructor() { this.attrs = {}; this.handlers = {}; this.innerHTML = ''; this.hidden = false; this.dataset = {}; this.focusArguments = []; this.classList = {add() {}, remove() {}}; }
   getAttribute(k) { return this.attrs[k] || null; }
   setAttribute(k, v) { this.attrs[k] = v; }
   removeAttribute(k) { delete this.attrs[k]; }
   addEventListener(k, fn) { this.handlers[k] = fn; }
-  focus() {}
+  focus(options) { this.focusArguments.push(options); }
+  getBoundingClientRect() { return {top: 210}; }
   querySelectorAll() { return []; }
   insertAdjacentHTML(_, html) { this.innerHTML += html; }
   insertAdjacentElement(_, el) { this.after = el; }
@@ -18,8 +19,9 @@ const grid = new Element(), status = new Element(), form = new Element(), search
 const mapping = {'[data-mcf-recipe-grid]': grid, '[data-mcf-recipe-detail]': detail, '.mcf-recipe-status': status, '[data-mcf-search-progress]': progress, '[data-mcf-search-progress-text]': progressText, '[data-mcf-search-progress-detail]': progressDetail, '.mcf-recipe-search': form, 'input[name="search"]': search, '.mcf-recipe-load-more': more};
 root.querySelector = s => mapping[s] || null;
 const pending = [];
+const scrollCalls = [];
 const context = {
-  window: { MCFRecipes: {restUrl: '/wp-json/mcf-recipes/v1', i18n: {loading: 'Loading', noResults: 'None', aiSearching: 'Finding recipes', aiSearchError: 'AI search failed'} }, setTimeout, clearTimeout},
+  window: { MCFRecipes: {restUrl: '/wp-json/mcf-recipes/v1', i18n: {loading: 'Loading', noResults: 'None', aiSearching: 'Finding recipes', aiSearchError: 'AI search failed'} }, pageYOffset: 100, innerWidth: 375, scrollTo: options => scrollCalls.push(options), requestAnimationFrame: callback => callback(), setTimeout, clearTimeout},
   document: {readyState: 'complete', querySelectorAll: () => [root], createElement: () => new Element(), addEventListener() {}},
   fetch: url => new Promise((resolve, reject) => pending.push({url, resolve, reject})),
   URLSearchParams
@@ -46,6 +48,9 @@ const recipe = (id, title) => ({id, title});
   root.handlers.click({target: {closest(selector) { return selector === '[data-mcf-view]' ? {getAttribute() { return '1'; }} : null; }}});
   assert.match(pending[0].url, /\/recipes\/1/);
   await reply(recipe(1, 'Carrot soup'));
+  assert.equal(detail.focusArguments[0].preventScroll, true);
+  assert.equal(scrollCalls[0].top, 294);
+  assert.equal(scrollCalls[0].behavior, 'auto');
   assert.match(pending[0].url, /\/recipes\/1\/click/);
   const clickRequest = pending.shift();
   clickRequest.resolve({ok: true, json: async () => ({recorded: true})});

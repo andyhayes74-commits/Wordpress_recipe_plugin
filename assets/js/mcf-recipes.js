@@ -321,8 +321,22 @@
 					detail.dataset.recipeId = id;
 					detail.innerHTML = detailHtml(recipe);
 					detail.hidden = false;
-					detail.focus();
 					root.classList.add('mcf-recipe-library--detail-open');
+					window.requestAnimationFrame(function () {
+						// Focusing the panel keeps keyboard and screen-reader users oriented.
+						// Do it before the explicit scroll: browser focus scrolling may otherwise
+						// place a long recipe too far down the mobile viewport.
+						try {
+							detail.focus({ preventScroll: true });
+						} catch (error) {
+							detail.focus();
+						}
+
+						var offset = window.innerWidth <= 640 ? 16 : 24;
+						var currentTop = window.pageYOffset || window.scrollY || 0;
+						var targetTop = currentTop + detail.getBoundingClientRect().top - offset;
+						window.scrollTo({ top: Math.max(0, targetTop), behavior: 'auto' });
+					});
 					setStatus('');
 				})
 				.catch(function () {
