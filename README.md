@@ -1,8 +1,18 @@
-# WordPress Recipe Plugin v1.3.2
+# WordPress Recipe Plugin
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
 The plugin helps visitors find practical recipes for surplus ingredients, then adapt selected recipes to suit what they have available.
+
+## Release status
+
+| Version | Branch | Status |
+| --- | --- | --- |
+| v1.3.2 | `v1.3.2-title-first-matching` | Current release candidate. Adds title-first MealDB candidate discovery and stricter treatment of side ingredients. |
+| v1.3.1 | `main` | Previous baseline release. |
+
+For installation, use the purpose-built `marcham-recipe-plugin-v1.3.2.zip` release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+
 
 ## Current MVP
 
