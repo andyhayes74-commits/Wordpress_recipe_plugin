@@ -24,8 +24,12 @@ class MCF_Recipe_Spoonacular {
 			return new WP_Error( 'spoonacular_not_configured', 'Spoonacular is enabled but no API key has been saved.' );
 		}
 		$args['apiKey'] = $key;
+		// Spoonacular can return both US and metric measures. Always request metric
+		// values for this UK-facing recipe library.
+		$args['units'] = 'metric';
 		$url = self::BASE_URL . ltrim( $endpoint, '/' ) . '?' . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 );
-		$cache_key = 'mcf_spoonacular_' . md5( $url );
+		// Version the cache key so existing imperial API responses are not reused.
+		$cache_key = 'mcf_spoonacular_metric_v2_' . md5( $url );
 		$cached = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
 			return $cached;
@@ -177,7 +181,7 @@ class MCF_Recipe_Spoonacular {
 		}
 		$ingredients = array();
 		foreach ( isset( $recipe['extendedIngredients'] ) && is_array( $recipe['extendedIngredients'] ) ? $recipe['extendedIngredients'] : array() as $ingredient ) {
-			$line = $ingredient['original'] ?? ( $ingredient['originalString'] ?? ( $ingredient['name'] ?? '' ) );
+			$line = self::metric_ingredient_line( $ingredient );
 			if ( $line ) { $ingredients[] = sanitize_text_field( $line ); }
 		}
 		$summary = ! empty( $recipe['summary'] ) ? sanitize_textarea_field( wp_strip_all_tags( $recipe['summary'] ) ) : '';
@@ -193,6 +197,18 @@ class MCF_Recipe_Spoonacular {
 			'image' => esc_url_raw( $recipe['image'] ?? '' ), 'image_alt' => sanitize_text_field( $recipe['title'] ?? '' ), 'permalink' => '',
 			'source_url' => $source ? $source : ( $fallback ? $fallback : 'https://spoonacular.com/' ), 'source_is_original' => (bool) $source, 'provider' => self::PROVIDER,
 		);
+	}
+
+	private static function metric_ingredient_line( $ingredient ) {
+		$metric = isset( $ingredient['measures']['metric'] ) && is_array( $ingredient['measures']['metric'] ) ? $ingredient['measures']['metric'] : array();
+		$amount = isset( $metric['amount'] ) ? sanitize_text_field( (string) $metric['amount'] ) : '';
+		$unit = isset( $metric['unitShort'] ) ? sanitize_text_field( $metric['unitShort'] ) : ( isset( $metric['unitLong'] ) ? sanitize_text_field( $metric['unitLong'] ) : '' );
+		$name = sanitize_text_field( $ingredient['nameClean'] ?? ( $ingredient['name'] ?? '' ) );
+		$notes = isset( $ingredient['meta'] ) && is_array( $ingredient['meta'] ) ? implode( ', ', array_filter( array_map( 'sanitize_text_field', $ingredient['meta'] ) ) ) : '';
+		if ( $metric && ( '' !== $amount || '' !== $unit || '' !== $name ) ) {
+			return trim( implode( ' ', array_filter( array( $amount, $unit, $name ) ) ) . ( $notes ? ', ' . $notes : '' ) );
+		}
+		return $ingredient['original'] ?? ( $ingredient['originalString'] ?? '' );
 	}
 
 	private static function terms( $search ) {

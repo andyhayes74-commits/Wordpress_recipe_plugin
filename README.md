@@ -8,7 +8,8 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 
 | Version | Branch | Status |
 | --- | --- | --- |
-| v1.3.8 | `v1.3.8-spoonacular-providers` | Current release candidate. Adds secure Spoonacular integration and provider enable/disable switches. |
+| v1.3.9 | `v1.3.9-spoonacular-metric` | Current release candidate. Requests and displays metric Spoonacular ingredient measures. |
+| v1.3.8 | `v1.3.8-spoonacular-providers` | Earlier provider-controls candidate. Adds secure Spoonacular integration and provider enable/disable switches. |
 | v1.3.7 | `v1.3.7-recipe-source-links` | Earlier source-link candidate. Replaces visitor AI modification with verified source links. |
 | v1.3.6 | `v1.3.6-mobile-detail-scroll` | Current release candidate. Aligns the selected recipe panel at the top of the viewport on mobile. |
 | v1.3.5 | `v1.3.5-popular-browse` | Current release candidate. Sorts the initial browse page by real visitor popularity, with a varied fallback. |
@@ -17,7 +18,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.8.zip](releases/marcham-recipe-plugin-v1.3.8.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.9.zip](releases/marcham-recipe-plugin-v1.3.9.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -66,7 +67,13 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.8.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.9.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.9: Metric Spoonacular ingredients
+
+- Spoonacular requests now include `units=metric`.
+- The recipe panel builds ingredient lines from Spoonacular's dedicated metric amount and unit fields, rather than its original US-focused ingredient wording.
+- The Spoonacular cache key is versioned, so previously cached imperial responses are not reused after the update.
 
 ## v1.3.8: Spoonacular provider and provider controls
 
