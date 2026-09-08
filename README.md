@@ -186,7 +186,7 @@ Build-environment verification for this release: JavaScript regression/syntax ch
 5. Under **Recipe providers**, keep **Enable TheMealDB** switched on for a no-key fallback. Optionally enter a TheMealDB supporter key; blank uses development key `1`.
 6. To use Spoonacular, paste its API key into **Spoonacular API key** and switch on **Enable Spoonacular**. With both switches on, Spoonacular is preferred; switch it off to roll back to TheMealDB. Do not put either provider key in Elementor, JavaScript or a public repository.
 7. Keep existing local recipes until the external-provider version has passed staging checks. The CSV importer remains available for rollback/editorial use, but it does not populate public provider results.
-7. Add [mcf_recipes] to an Elementor Shortcode widget.
+8. Add [mcf_recipes] to an Elementor Shortcode widget.
 
 Open **Recipe Library → Settings** to change the public wording, font family, text sizes, weights, alignment, colours, backgrounds and corner radius. These settings apply to every `[mcf_recipes]` shortcode on the site.
 
