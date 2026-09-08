@@ -173,11 +173,11 @@ class MCF_Recipe_Spoonacular {
 		$steps = array();
 		foreach ( isset( $recipe['analyzedInstructions'] ) && is_array( $recipe['analyzedInstructions'] ) ? $recipe['analyzedInstructions'] : array() as $instruction_group ) {
 			foreach ( isset( $instruction_group['steps'] ) && is_array( $instruction_group['steps'] ) ? $instruction_group['steps'] : array() as $step ) {
-				if ( ! empty( $step['step'] ) ) { $steps[] = sanitize_textarea_field( $step['step'] ); }
+				if ( ! empty( $step['step'] ) ) { $steps[] = self::metric_method_step( sanitize_textarea_field( $step['step'] ) ); }
 			}
 		}
 		if ( ! $steps && ! empty( $recipe['instructions'] ) ) {
-			$steps = MCF_Recipe_Plugin::normalise_method_lines( wp_strip_all_tags( $recipe['instructions'] ) );
+			$steps = array_map( array( __CLASS__, 'metric_method_step' ), MCF_Recipe_Plugin::normalise_method_lines( wp_strip_all_tags( $recipe['instructions'] ) ) );
 		}
 		$ingredients = array();
 		foreach ( isset( $recipe['extendedIngredients'] ) && is_array( $recipe['extendedIngredients'] ) ? $recipe['extendedIngredients'] : array() as $ingredient ) {
@@ -201,14 +201,56 @@ class MCF_Recipe_Spoonacular {
 
 	private static function metric_ingredient_line( $ingredient ) {
 		$metric = isset( $ingredient['measures']['metric'] ) && is_array( $ingredient['measures']['metric'] ) ? $ingredient['measures']['metric'] : array();
-		$amount = isset( $metric['amount'] ) ? sanitize_text_field( (string) $metric['amount'] ) : '';
+		$amount = isset( $metric['amount'] ) ? self::number_value( $metric['amount'] ) : null;
 		$unit = isset( $metric['unitShort'] ) ? sanitize_text_field( $metric['unitShort'] ) : ( isset( $metric['unitLong'] ) ? sanitize_text_field( $metric['unitLong'] ) : '' );
 		$name = sanitize_text_field( $ingredient['nameClean'] ?? ( $ingredient['name'] ?? '' ) );
 		$notes = isset( $ingredient['meta'] ) && is_array( $ingredient['meta'] ) ? implode( ', ', array_filter( array_map( 'sanitize_text_field', $ingredient['meta'] ) ) ) : '';
-		if ( $metric && ( '' !== $amount || '' !== $unit || '' !== $name ) ) {
-			return trim( implode( ' ', array_filter( array( $amount, $unit, $name ) ) ) . ( $notes ? ', ' . $notes : '' ) );
+		if ( $metric && ( null !== $amount || '' !== $unit || '' !== $name ) ) {
+			$measure = self::normalise_metric_measure( $amount, $unit );
+			$amount = $measure['amount'];
+			$unit = $measure['unit'];
+			if ( null !== $amount && '' === $unit && $amount > 1 && $name && ! preg_match( '/s$/i', $name ) ) {
+				$name .= 's';
+			}
+			return trim( implode( ' ', array_filter( array( self::format_number( $amount ), $unit, $name ) ) ) . ( $notes ? ', ' . $notes : '' ) );
 		}
 		return $ingredient['original'] ?? ( $ingredient['originalString'] ?? '' );
+	}
+
+	private static function normalise_metric_measure( $amount, $unit ) {
+		$key = strtolower( preg_replace( '/[^a-z]/', '', (string) $unit ) );
+		$volume_units = array( 'tsp' => 5, 'tsps' => 5, 'teaspoon' => 5, 'teaspoons' => 5, 'tbsp' => 15, 'tbsps' => 15, 'tablespoon' => 15, 'tablespoons' => 15, 'cup' => 240, 'cups' => 240, 'floz' => 29.5735, 'fluidounce' => 29.5735, 'fluidounces' => 29.5735 );
+		$weight_units = array( 'oz' => 28.3495, 'ounce' => 28.3495, 'ounces' => 28.3495, 'lb' => 453.592, 'lbs' => 453.592, 'pound' => 453.592, 'pounds' => 453.592 );
+		if ( isset( $volume_units[ $key ] ) && null !== $amount ) {
+			return array( 'amount' => $amount * $volume_units[ $key ], 'unit' => 'ml' );
+		}
+		if ( isset( $weight_units[ $key ] ) && null !== $amount ) {
+			return array( 'amount' => round( $amount * $weight_units[ $key ] ), 'unit' => 'g' );
+		}
+		if ( in_array( $key, array( 'serving', 'servings', 'piece', 'pieces' ), true ) ) {
+			return array( 'amount' => $amount, 'unit' => '' );
+		}
+		return array( 'amount' => $amount, 'unit' => $unit );
+	}
+
+	private static function metric_method_step( $step ) {
+		return preg_replace_callback( '/\b([3-5]\d{2})\s*(?:°\s*)?(?:f|fahrenheit|degrees?(?:\s+fahrenheit)?)\b/i', function ( $matches ) {
+			$celsius = round( ( ( (float) $matches[1] - 32 ) * 5 / 9 ) / 5 ) * 5;
+			return self::format_number( $celsius ) . '°C';
+		}, (string) $step );
+	}
+
+	private static function number_value( $value ) {
+		$value = trim( (string) $value );
+		if ( preg_match( '/^(\d+)\s*\/\s*(\d+)$/', $value, $matches ) && (int) $matches[2] ) {
+			return (int) $matches[1] / (int) $matches[2];
+		}
+		return is_numeric( $value ) ? (float) $value : null;
+	}
+
+	private static function format_number( $value ) {
+		if ( null === $value || '' === $value ) { return ''; }
+		return rtrim( rtrim( number_format( (float) $value, 1, '.', '' ), '0' ), '.' );
 	}
 
 	private static function terms( $search ) {
