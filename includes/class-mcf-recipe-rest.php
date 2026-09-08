@@ -11,7 +11,6 @@ class MCF_Recipe_Rest {
 		register_rest_route( self::NAMESPACE, '/recipes', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'list_recipes' ), 'permission_callback' => '__return_true', 'args' => array( 'search' => array( 'sanitize_callback' => 'sanitize_text_field' ), 'ai' => array( 'sanitize_callback' => 'rest_sanitize_boolean' ), 'cuisine' => array( 'sanitize_callback' => 'sanitize_title' ), 'page' => array( 'default' => 1, 'sanitize_callback' => 'absint' ), 'per_page' => array( 'default' => 8, 'sanitize_callback' => 'absint' ) ) ) );
 		register_rest_route( self::NAMESPACE, '/recipes/(?P<id>\d+)', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( __CLASS__, 'get_recipe' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NAMESPACE, '/recipes/(?P<id>\d+)/click', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'record_click' ), 'permission_callback' => '__return_true' ) );
-		register_rest_route( self::NAMESPACE, '/recipes/(?P<id>\d+)/adapt', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( __CLASS__, 'adapt_recipe' ), 'permission_callback' => '__return_true' ) );
 	}
 
 	public static function list_recipes( WP_REST_Request $request ) {
@@ -154,19 +153,6 @@ class MCF_Recipe_Rest {
 		return rest_ensure_response( array( 'recorded' => true ) );
 	}
 
-	public static function adapt_recipe( WP_REST_Request $request ) {
-		self::prevent_cache(); $meal = MCF_Recipe_MealDB::meal( $request['id'] );
-		if ( ! is_array( $meal ) ) { return new WP_Error( 'mcf_recipe_not_found', __( 'Recipe not found.', 'marcham-recipe-plugin' ), array( 'status' => 404 ) ); }
-		if ( self::rate_limited() ) { return new WP_Error( 'mcf_rate_limited', __( 'Please wait before requesting another adaptation.', 'marcham-recipe-plugin' ), array( 'status' => 429 ) ); }
-		$api_key = MCF_Recipe_Admin::get_openai_key();
-		if ( ! $api_key ) { return new WP_Error( 'mcf_ai_not_configured', __( 'AI adaptation has not been configured yet.', 'marcham-recipe-plugin' ), array( 'status' => 503 ) ); }
-		$body = $request->get_json_params(); $instruction = isset( $body['instruction'] ) ? sanitize_textarea_field( $body['instruction'] ) : '';
-		if ( '' === trim( $instruction ) || strlen( $instruction ) > 800 ) { return new WP_Error( 'mcf_invalid_instruction', __( 'Please enter a short adaptation request.', 'marcham-recipe-plugin' ), array( 'status' => 400 ) ); }
-		$result = self::call_openai( $api_key, MCF_Recipe_Admin::get_openai_model(), MCF_Recipe_MealDB::to_recipe( $meal ), $instruction );
-		if ( is_wp_error( $result ) ) { return $result; }
-		$result['source_recipe_id'] = absint( $request['id'] ); $result['ai_adapted'] = true; return rest_ensure_response( $result );
-	}
-
 	private static function ai_rank_recipe_search( $search, $interpretation, $candidates ) {
 		$ids = array_map( 'absint', wp_list_pluck( $candidates, 'id' ) );
 		$base = array( 'normalised_terms' => $interpretation['terms'], 'unmatched_terms' => $interpretation['ingredients'] ? array() : $interpretation['terms'], 'recipe_ids' => array(), 'other_recipe_ids' => array(), 'source' => 'ai', 'ai_duration_ms' => 0 );
@@ -243,20 +229,8 @@ class MCF_Recipe_Rest {
 		return $ranked;
 	}
 
-	private static function call_openai( $api_key, $model, $recipe, $instruction ) {
-		$payload = array( 'model' => $model, 'store' => false, 'instructions' => 'You adapt approved recipes. Return JSON only with keys title, description, ingredients (array of strings), method (array of strings), warnings. Preserve allergen and food-safety warnings. Do not claim that food is safe if its condition is unknown.', 'input' => wp_json_encode( array( 'original_recipe' => $recipe, 'user_request' => $instruction ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
-		$response = wp_remote_post( 'https://api.openai.com/v1/responses', array( 'timeout' => 45, 'headers' => array( 'Authorization' => 'Bearer ' . $api_key, 'Content-Type' => 'application/json' ), 'body' => wp_json_encode( $payload ) ) );
-		if ( is_wp_error( $response ) ) { return new WP_Error( 'mcf_ai_request_failed', __( 'The AI service could not be reached.', 'marcham-recipe-plugin' ), array( 'status' => 502 ) ); }
-		$status = wp_remote_retrieve_response_code( $response ); $body = json_decode( wp_remote_retrieve_body( $response ), true );
-		if ( $status < 200 || $status >= 300 || ! is_array( $body ) ) { return new WP_Error( 'mcf_ai_request_failed', __( 'The AI service returned an error.', 'marcham-recipe-plugin' ), array( 'status' => 502 ) ); }
-		$text = isset( $body['output_text'] ) ? $body['output_text'] : self::extract_output_text( $body ); $data = self::decode_json( $text );
-		if ( ! is_array( $data ) ) { return new WP_Error( 'mcf_ai_invalid_response', __( 'The AI response was not in the expected format.', 'marcham-recipe-plugin' ), array( 'status' => 502 ) ); }
-		return array( 'title' => sanitize_text_field( $data['title'] ?? $recipe['title'] ), 'description' => sanitize_textarea_field( $data['description'] ?? $recipe['description'] ), 'ingredients' => MCF_Recipe_Plugin::normalise_lines( $data['ingredients'] ?? $recipe['ingredients'] ), 'method' => MCF_Recipe_Plugin::normalise_method_lines( $data['method'] ?? $recipe['method'] ), 'warnings' => MCF_Recipe_Plugin::normalise_lines( $data['warnings'] ?? array() ), 'cuisine' => $recipe['cuisine'], 'dietary' => $recipe['dietary'], 'prep_time' => $recipe['prep_time'], 'cook_time' => $recipe['cook_time'], 'servings' => $recipe['servings'], 'allergens' => $recipe['allergens'], 'storage' => $recipe['storage'], 'image' => $recipe['image'], 'image_alt' => $recipe['image_alt'] );
-	}
-
 	private static function extract_output_text( $body ) { $text = ''; foreach ( isset( $body['output'] ) && is_array( $body['output'] ) ? $body['output'] : array() as $item ) { foreach ( isset( $item['content'] ) && is_array( $item['content'] ) ? $item['content'] : array() as $content ) { if ( isset( $content['text'] ) ) { $text .= (string) $content['text']; } } } return $text; }
 	private static function decode_json( $text ) { $text = trim( (string) $text ); $text = preg_replace( '/^```(?:json)?\s*/i', '', $text ); $text = preg_replace( '/\s*```$/', '', $text ); $data = json_decode( $text, true ); if ( is_array( $data ) ) { return $data; } $start = strpos( $text, '{' ); $end = strrpos( $text, '}' ); return false !== $start && false !== $end && $end > $start ? json_decode( substr( $text, $start, $end - $start + 1 ), true ) : null; }
-	private static function rate_limited() { $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'unknown'; $key = 'mcf_ai_' . md5( $ip ); if ( get_transient( $key ) ) { return true; } set_transient( $key, 1, MINUTE_IN_SECONDS ); return false; }
 	private static function search_rate_limited() { $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'unknown'; $key = 'mcf_ai_search_rate_' . md5( $ip ); if ( get_transient( $key ) ) { return true; } set_transient( $key, 1, 3 ); return false; }
 	private static function prevent_cache() { do_action( 'litespeed_control_set_nocache' ); nocache_headers(); }
 }

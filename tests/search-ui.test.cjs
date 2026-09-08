@@ -30,7 +30,7 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname, '../asse
 const flush = () => new Promise(resolve => setImmediate(resolve));
 async function reply(data, request = pending.shift()) { request.resolve({ok: true, json: async () => data}); await flush(); }
 function submit(value) { search.value = value; form.handlers.submit({preventDefault() {}}); }
-const recipe = (id, title) => ({id, title});
+const recipe = (id, title) => ({id, title, source_url: 'https://example.test/recipes/' + id, source_is_original: true});
 (async () => {
   await reply({recipes: [], total: 0, pages: 0});
   assert.equal(more.hidden, true);
@@ -51,6 +51,9 @@ const recipe = (id, title) => ({id, title});
   assert.equal(detail.focusArguments[0].preventScroll, true);
   assert.equal(scrollCalls[0].top, 294);
   assert.equal(scrollCalls[0].behavior, 'auto');
+  assert.match(detail.innerHTML, /View original recipe/);
+  assert.match(detail.innerHTML, /https:\/\/example\.test\/recipes\/1/);
+  assert.doesNotMatch(detail.innerHTML, /Modify with AI/);
   assert.match(pending[0].url, /\/recipes\/1\/click/);
   const clickRequest = pending.shift();
   clickRequest.resolve({ok: true, json: async () => ({recorded: true})});

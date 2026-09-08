@@ -191,6 +191,9 @@
 .mcf-recipe-search button,
 .mcf-recipe-button,
 .mcf-recipe-load-more {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	border: 0;
 	border-radius: 999px;
 	background: var(--mcf-orange);
@@ -199,6 +202,7 @@
 	font: inherit;
 	font-weight: 800;
 	padding: 13px 22px;
+	text-decoration: none;
 }
 
 .mcf-recipe-search button {

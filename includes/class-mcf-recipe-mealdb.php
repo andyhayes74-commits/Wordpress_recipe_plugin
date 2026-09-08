@@ -423,11 +423,13 @@ class MCF_Recipe_MealDB {
 	public static function to_recipe( $meal ) {
 		$method = MCF_Recipe_Plugin::normalise_method_lines( $meal['strInstructions'] ?? '' );
 		$description = sanitize_textarea_field( implode( ' ', array_slice( $method, 0, 2 ) ) );
+		$meal_id = absint( $meal['idMeal'] ?? 0 );
+		$original_source = esc_url_raw( $meal['strSource'] ?? '' );
 		if ( strlen( $description ) > 320 ) {
 			$description = substr( $description, 0, 317 ) . '…';
 		}
 		$recipe = array(
-			'id'          => absint( $meal['idMeal'] ),
+			'id'          => $meal_id,
 			'title'       => sanitize_text_field( $meal['strMeal'] ?? '' ),
 			'description' => $description ? $description : sanitize_textarea_field( $meal['strCategory'] ?? '' ) . ( ! empty( $meal['strArea'] ) ? ' · ' . sanitize_textarea_field( $meal['strArea'] ) : '' ),
 			'ingredients' => self::ingredients( $meal ),
@@ -444,6 +446,8 @@ class MCF_Recipe_MealDB {
 			'image'       => esc_url_raw( $meal['strMealThumb'] ?? '' ),
 			'image_alt'   => sanitize_text_field( $meal['strMeal'] ?? '' ),
 			'permalink'   => '',
+			'source_url'  => $original_source ? $original_source : 'https://www.themealdb.com/meal.php?c=' . $meal_id,
+			'source_is_original' => (bool) $original_source,
 		);
 		return $recipe;
 	}

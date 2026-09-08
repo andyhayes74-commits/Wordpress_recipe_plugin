@@ -2,12 +2,13 @@
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
-The plugin helps visitors find practical recipes for surplus ingredients, then adapt selected recipes to suit what they have available.
+The plugin helps visitors find practical recipes for surplus ingredients from TheMealDB and links visitors to the original source where one is available.
 
 ## Release status
 
 | Version | Branch | Status |
 | --- | --- | --- |
+| v1.3.7 | `v1.3.7-recipe-source-links` | Current release candidate. Replaces visitor AI modification with verified source links. |
 | v1.3.6 | `v1.3.6-mobile-detail-scroll` | Current release candidate. Aligns the selected recipe panel at the top of the viewport on mobile. |
 | v1.3.5 | `v1.3.5-popular-browse` | Current release candidate. Sorts the initial browse page by real visitor popularity, with a varied fallback. |
 | v1.3.4 | `v1.3.4-search-normalisation` | Earlier search-normalisation candidate. |
@@ -15,7 +16,7 @@ The plugin helps visitors find practical recipes for surplus ingredients, then a
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.6.zip](releases/marcham-recipe-plugin-v1.3.6.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.7.zip](releases/marcham-recipe-plugin-v1.3.7.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -28,7 +29,7 @@ The first working version includes:
 - Elementor-compatible [mcf_recipes] shortcode
 - Searchable MealDB recipe cards with cuisine filters
 - In-page recipe detail panel
-- Server-side OpenAI recipe adaptation endpoint
+- Original-recipe source link, with a TheMealDB page fallback
 - Browser print / save-as-PDF output for the selected recipe
 - Settings-based typography, colours, spacing and corner-radius controls
 - Editable visitor-facing wording for the complete recipe-library interface
@@ -64,7 +65,13 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.6.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.7.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.7: Recipe source links
+
+- The visitor-facing “Modify with AI” action and its REST endpoint have been removed.
+- Every recipe now has a source button. It opens the original publisher URL when TheMealDB provides one, or its matching TheMealDB recipe page when it does not.
+- OpenAI continues to assess search suitability; it is no longer used to rewrite recipes live for visitors.
 
 ## v1.3.6: Reliable selected-recipe position on mobile
 
@@ -117,7 +124,7 @@ For a potato search, this keeps potato soup, jacket potatoes, roast potatoes, Bu
 - Opening a recipe records a query-specific and global click count. Popularity only breaks ties within the AI-approved strong/other groups, so an unsuitable popular recipe cannot be promoted.
 - Search diagnostics now display TheMealDB candidate and selected titles, while Search learning displays most-clicked meals.
 
-The public page continues to show recipe details in the browser, with AI modification and print/save-as-PDF. Dietary filtering is not presented for MealDB results because the source does not provide a reliable classification for this workflow.
+The public page continues to show recipe details in the browser, with an original-source link and print/save-as-PDF. Dietary filtering is not presented for MealDB results because the source does not provide a reliable classification for this workflow.
 
 ## v1.2.0: learned AI search and visible progress
 
@@ -173,7 +180,7 @@ Build-environment verification for this release: JavaScript regression/syntax ch
 
 Open **Recipe Library → Settings** to change the public wording, font family, text sizes, weights, alignment, colours, backgrounds and corner radius. These settings apply to every `[mcf_recipes]` shortcode on the site.
 
-AI adaptation and AI-assisted suitability ranking remain unavailable until an administrator enters an OpenAI API key. The key must never be placed in an Elementor page, JavaScript file or public repository. The page reports a clear configuration message when the key is missing.
+AI-assisted suitability ranking remains unavailable until an administrator enters an OpenAI API key. The key must never be placed in an Elementor page, JavaScript file or public repository. The page reports a clear configuration message when the key is missing.
 
 ## Visitor experience
 
@@ -251,21 +258,13 @@ When an API key is configured, submitting a search asks OpenAI to rank only the 
 
 An example file is included at examples/recipes-example.csv. The ingredients and method fields can use `||` or semicolons between entries so the importer can preserve each ingredient and method step separately.
 
-## AI recipe modification
+## Recipe source and AI use
 
-AI should modify an approved recipe rather than invent unrestricted food-safety advice. Visitors may request changes such as:
-
-- Use available ingredients
-- Replace a missing ingredient
-- Change the number of servings
-- Make the recipe vegetarian or vegan
-- Make the recipe quicker or more suitable for children
-
-AI-generated changes should be clearly labelled and preserve relevant allergen and food-safety warnings. API credentials must remain server-side and must never be exposed in browser JavaScript.
+The recipe panel links to its original publisher when TheMealDB provides a source URL. Otherwise it links to that recipe's TheMealDB page. OpenAI is used only to rank a deterministic shortlist for the visitor's surplus-food search; it does not modify the visitor-facing recipe text.
 
 ## PDF generation
 
-The PDF action should generate a printable version of the recipe currently shown on screen, including any approved or AI-adapted changes. The online recipe panel must continue to work independently of PDF generation.
+The PDF action should generate a printable version of the recipe currently shown on screen. The online recipe panel must continue to work independently of PDF generation.
 
 ## Technical requirements
 

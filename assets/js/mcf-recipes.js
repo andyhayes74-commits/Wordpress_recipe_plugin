@@ -286,6 +286,9 @@
 			if (recipe.servings) {
 				metadata.push(esc(config.i18n.servingsLabel || 'Servings:') + ' ' + esc(recipe.servings));
 			}
+			var sourceLabel = recipe.source_is_original
+				? (config.i18n.sourceRecipe || 'View original recipe')
+				: (config.i18n.mealdbRecipe || 'View on TheMealDB');
 			return '<div class="mcf-recipe-detail__toolbar">' +
 				'<button type="button" class="mcf-recipe-link" data-mcf-close>← ' + esc(config.i18n.backToRecipes || 'Back to recipes') + '</button>' +
 				'<span class="mcf-recipe-detail__badge">' + esc(recipe.ai_adapted ? (config.i18n.aiAdaptedBadge || 'AI-adapted') : (config.i18n.recipeBadge || 'Recipe')) + '</span>' +
@@ -302,7 +305,7 @@
 				(recipe.storage ? '<div class="mcf-recipe-callout"><strong>' + esc(config.i18n.storageHeading || 'Storage and reheating') + '</strong><br>' + esc(recipe.storage) + '</div>' : '') +
 				(recipe.warnings && recipe.warnings.length ? '<div class="mcf-recipe-callout mcf-recipe-callout--warning"><strong>' + esc(config.i18n.adaptationNotesHeading || 'AI adaptation notes') + '</strong>' + list(recipe.warnings, 'mcf-recipe-list') + '</div>' : '') +
 				'<div class="mcf-recipe-detail__actions">' +
-				'<button type="button" class="mcf-recipe-button mcf-recipe-button--green" data-mcf-adapt>' + esc(config.i18n.adaptRecipe) + '</button>' +
+				'<a class="mcf-recipe-button mcf-recipe-button--green" href="' + esc(recipe.source_url || '') + '" target="_blank" rel="noopener noreferrer">' + esc(sourceLabel) + ' ↗</a>' +
 				'<button type="button" class="mcf-recipe-button mcf-recipe-button--outline" data-mcf-print>' + esc(config.i18n.printRecipe) + '</button>' +
 				'</div></div></div>';
 		}
@@ -391,38 +394,6 @@
 					root.classList.remove('mcf-recipe-library--printing');
 				}, 500);
 				return;
-			}
-			if (event.target.closest('[data-mcf-adapt]')) {
-				var instruction = window.prompt(config.i18n.adaptPrompt);
-				if (!instruction) {
-					return;
-				}
-				var current = detail.querySelector('[data-mcf-adapt]');
-				current.disabled = true;
-				current.textContent = config.i18n.adaptLoading;
-				var recipeId = detail.querySelector('[data-mcf-close]') ? detail.dataset.recipeId : '';
-				if (!recipeId) {
-					recipeId = detail.dataset.recipeId || '';
-				}
-				fetch(endpoint('/recipes/' + encodeURIComponent(recipeId) + '/adapt'), {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-					body: JSON.stringify({ instruction: instruction })
-				})
-					.then(function (response) {
-						if (!response.ok) {
-							throw new Error('adapt_failed');
-						}
-						return response.json();
-					})
-					.then(function (recipe) {
-						detail.innerHTML = detailHtml(recipe);
-					})
-					.catch(function () {
-						current.disabled = false;
-						current.textContent = config.i18n.adaptRecipe;
-						window.alert(config.i18n.adaptError);
-					});
 			}
 		});
 		root.addEventListener('mcf:open', function (event) {

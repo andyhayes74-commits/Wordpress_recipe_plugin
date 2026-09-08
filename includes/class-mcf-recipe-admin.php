@@ -92,11 +92,9 @@ class MCF_Recipe_Admin {
 			'allergen_heading'        => 'Allergen information',
 			'storage_heading'         => 'Storage and reheating',
 			'adaptation_notes_heading'=> 'AI adaptation notes',
-			'adapt_recipe'            => 'Modify with AI',
+			'source_recipe'           => 'View original recipe',
+			'mealdb_recipe'           => 'View on TheMealDB',
 			'print_recipe'            => 'Print / save PDF',
-			'adapt_prompt'            => 'How would you like to adapt this recipe?',
-			'adapt_loading'           => 'Adapting recipe…',
-			'adapt_error'             => 'The recipe could not be adapted right now. Please try again later.',
 		);
 	}
 
@@ -351,16 +349,16 @@ class MCF_Recipe_Admin {
 			'Library introduction' => array( 'eyebrow', 'intro_heading', 'intro_text' ),
 			'Search and filters' => array( 'search_label', 'search_placeholder', 'search_button', 'filters_label', 'cuisine_label', 'all_cuisines', 'dietary_label', 'all_dietary', 'show_more_filters', 'show_less_filters' ),
 			'Cards and recipe details' => array( 'loading', 'no_results', 'results_singular', 'results_plural', 'load_more', 'view_recipe', 'back_to_recipes', 'recipe_badge', 'ai_adapted_badge', 'prep_label', 'cook_label', 'servings_label', 'ingredients_heading', 'method_heading', 'allergen_heading', 'storage_heading', 'adaptation_notes_heading' ),
-			'AI and print actions' => array( 'adapt_recipe', 'print_recipe', 'adapt_prompt', 'adapt_loading', 'adapt_error' ),
+			'Source and print actions' => array( 'source_recipe', 'mealdb_recipe', 'print_recipe' ),
 		);
 		$labels = array(
 			'no_focused_results' => 'No focused recipes', 'other_matches' => 'Other matches heading', 'search_fallback' => 'Legacy AI unavailable notice', 'search_error' => 'Search request error', 'ai_searching' => 'AI search message', 'ai_searching_detail' => 'AI search detail', 'ai_searching_slow' => 'AI search slow message', 'ai_search_error' => 'AI search error', 'local_search_notice' => 'Local-search notice', 'ai_not_configured' => 'AI not configured message', 'mealdb_error' => 'Recipe source error message',
-			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'show_more_filters' => 'Show more filters button', 'show_less_filters' => 'Show less filters button', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'adapt_recipe' => 'AI action button', 'print_recipe' => 'Print/PDF button', 'adapt_prompt' => 'AI prompt', 'adapt_loading' => 'AI loading message', 'adapt_error' => 'AI error message',
+			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'show_more_filters' => 'Show more filters button', 'show_less_filters' => 'Show less filters button', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'source_recipe' => 'Original-source button', 'mealdb_recipe' => 'TheMealDB-source button', 'print_recipe' => 'Print/PDF button',
 		);
 		foreach ( $groups as $group => $keys ) {
 			echo '<h3>' . esc_html( $group ) . '</h3><div class="mcf-settings-fields">';
 			foreach ( $keys as $key ) {
-				$type = in_array( $key, array( 'intro_text', 'adapt_prompt', 'adapt_error' ), true ) ? 'textarea' : 'text';
+				$type = 'intro_text' === $key ? 'textarea' : 'text';
 				if ( 'textarea' === $type ) {
 					printf( '<p><label><strong>%s</strong><br><textarea class="large-text" rows="3" name="%s">%s</textarea></label></p>', esc_html( $labels[ $key ] ), esc_attr( self::OPTION . '[text][' . $key . ']' ), esc_textarea( $text[ $key ] ) );
 				} else {
