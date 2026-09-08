@@ -42,12 +42,10 @@ class MCF_Recipe_Rest {
 					$ids = $ranked['recipe_ids']; $other_ids = $ranked['other_recipe_ids'];
 				} else {
 					$outcome = MCF_Recipe_Learning::find( $query_key, $fingerprint, MCF_Recipe_Admin::get_openai_model() );
+					$fresh_outcome = false;
 					if ( ! $outcome ) {
+						$fresh_outcome = true;
 						$outcome = self::ai_rank_recipe_search( $search, $found['interpretation'], $candidates );
-						if ( ! is_wp_error( $outcome ) ) {
-							$titles = self::titles_for_ids( $outcome['recipe_ids'], $outcome['other_recipe_ids'], $candidates );
-							MCF_Recipe_Learning::store( $query_key, $search, $fingerprint, MCF_Recipe_Admin::get_openai_model(), $candidate_count, $outcome, $titles );
-						}
 					}
 					if ( is_wp_error( $outcome ) ) {
 						/* A temporary AI failure must not hide usable MealDB recipes. */
@@ -57,6 +55,11 @@ class MCF_Recipe_Rest {
 						$ranked = self::deterministic_result_ids( $candidates );
 						$ids = $ranked['recipe_ids']; $other_ids = $ranked['other_recipe_ids'];
 					} else {
+						$outcome = self::ensure_title_led_results( $outcome, $candidates );
+						if ( $fresh_outcome ) {
+							$titles = self::titles_for_ids( $outcome['recipe_ids'], $outcome['other_recipe_ids'], $candidates );
+							MCF_Recipe_Learning::store( $query_key, $search, $fingerprint, MCF_Recipe_Admin::get_openai_model(), $candidate_count, $outcome, $titles );
+						}
 						$source = $outcome['source']; $reason = $outcome['recipe_ids'] ? 'matched' : 'no_strong_matches';
 						$ids = MCF_Recipe_Learning::order_by_popularity( $outcome['recipe_ids'], $query_key );
 						$other_ids = MCF_Recipe_Learning::order_by_popularity( $outcome['other_recipe_ids'], $query_key );
@@ -112,6 +115,21 @@ class MCF_Recipe_Rest {
 			}
 		}
 		return array( 'recipe_ids' => array_values( array_unique( $strong ) ), 'other_recipe_ids' => array_values( array_unique( $other ) ) );
+	}
+
+	private static function ensure_title_led_results( $outcome, $candidates ) {
+		$title_led_ids = array();
+		foreach ( (array) $candidates as $candidate ) {
+			$id = isset( $candidate['id'] ) ? absint( $candidate['id'] ) : 0;
+			$terms = isset( $candidate['matched_terms'] ) && is_array( $candidate['matched_terms'] ) ? $candidate['matched_terms'] : array();
+			$title_terms = isset( $candidate['title_led_terms'] ) && is_array( $candidate['title_led_terms'] ) ? $candidate['title_led_terms'] : array();
+			if ( $id && 'primary' === ( $candidate['match_band'] ?? '' ) && $terms && count( $terms ) === count( $title_terms ) ) {
+				$title_led_ids[] = $id;
+			}
+		}
+		$outcome['recipe_ids'] = array_values( array_unique( array_merge( $title_led_ids, (array) ( $outcome['recipe_ids'] ?? array() ) ) ) );
+		$outcome['other_recipe_ids'] = array_values( array_diff( (array) ( $outcome['other_recipe_ids'] ?? array() ), $outcome['recipe_ids'] ) );
+		return $outcome;
 	}
 
 	public static function get_recipe( WP_REST_Request $request ) {

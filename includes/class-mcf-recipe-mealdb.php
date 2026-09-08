@@ -62,7 +62,7 @@ class MCF_Recipe_MealDB {
 		$names = array();
 		foreach ( $data['meals'] as $item ) {
 			if ( ! empty( $item['strIngredient'] ) ) {
-				$name = self::term( $item['strIngredient'] );
+				$name = self::canonical_term( $item['strIngredient'] );
 				$names[ $name ] = sanitize_text_field( $item['strIngredient'] );
 			}
 		}
@@ -79,10 +79,10 @@ class MCF_Recipe_MealDB {
 			if ( in_array( $word, $stop, true ) ) {
 				continue;
 			}
-			$word = self::singular( $word );
+			$word = self::canonical_term( $word );
 			$match = self::match_dictionary( $word, $dictionary );
 			if ( $match ) {
-				$ingredients[ self::term( $match ) ] = $match;
+				$ingredients[ self::canonical_term( $match ) ] = $match;
 			} else {
 				$residual[] = $word;
 			}
@@ -115,6 +115,9 @@ class MCF_Recipe_MealDB {
 		if ( strlen( $word ) > 4 && 'ies' === substr( $word, -3 ) ) {
 			return substr( $word, 0, -3 ) . 'y';
 		}
+		if ( strlen( $word ) > 4 && 'oes' === substr( $word, -3 ) ) {
+			return substr( $word, 0, -2 );
+		}
 		if ( strlen( $word ) > 3 && 's' === substr( $word, -1 ) && 'ss' !== substr( $word, -2 ) ) {
 			return substr( $word, 0, -1 );
 		}
@@ -125,6 +128,15 @@ class MCF_Recipe_MealDB {
 		$value = strtolower( trim( (string) $value ) );
 		$value = preg_replace( '/[^a-z0-9]+/', '_', $value );
 		return trim( $value, '_' );
+	}
+
+	private static function canonical_term( $value ) {
+		$words = array_filter( explode( '_', self::term( $value ) ) );
+		foreach ( $words as &$word ) {
+			$word = self::singular( $word );
+		}
+		unset( $word );
+		return implode( '_', $words );
 	}
 
 	public static function find_candidates( $search, $cuisine = '' ) {
@@ -261,6 +273,7 @@ class MCF_Recipe_MealDB {
 		$matched_terms = array();
 		$primary_terms = array();
 		$secondary_terms = array();
+		$title_led_terms = array();
 		foreach ( $terms as $term ) {
 			$score = self::score_term( $candidate, $term );
 			$term_scores[ $term ] = $score['score'];
@@ -271,6 +284,9 @@ class MCF_Recipe_MealDB {
 				$primary_terms[] = $term;
 			} elseif ( 'secondary' === $score['band'] ) {
 				$secondary_terms[] = $term;
+			}
+			if ( ! empty( $score['title_led'] ) ) {
+				$title_led_terms[] = $term;
 			}
 		}
 		$score_values = array_values( $term_scores );
@@ -286,6 +302,7 @@ class MCF_Recipe_MealDB {
 		$candidate['matched_terms'] = array_values( array_unique( $matched_terms ) );
 		$candidate['primary_terms'] = array_values( array_unique( $primary_terms ) );
 		$candidate['secondary_terms'] = array_values( array_unique( $secondary_terms ) );
+		$candidate['title_led_terms'] = array_values( array_unique( $title_led_terms ) );
 		$candidate['term_scores'] = $term_scores;
 		return $candidate;
 	}
@@ -336,42 +353,54 @@ class MCF_Recipe_MealDB {
 			'score'   => $score,
 			'matched' => $title_match || (bool) $matching_lines,
 			'band'    => $primary ? 'primary' : ( $secondary ? 'secondary' : 'incidental' ),
+			'title_led' => $title_led_match,
 		);
 	}
 
 	private static function title_is_led_match( $title, $term ) {
-		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
-		if ( ! $words ) {
+		$term_pattern = self::term_pattern( $term );
+		if ( '' === $term_pattern ) {
 			return false;
 		}
-		$last = array_pop( $words );
-		$words[] = preg_quote( $last, '/' ) . 's?';
-		$term_pattern = implode( '[\\s_-]+', $words );
 		/* Allow short qualifiers, but reject a late side ingredient in a long title. */
-		$pattern = '/^\\s*(?:[a-z0-9]+[\\s_-]+){0,2}' . $term_pattern . '(?![a-z])/i';
+		$pattern = '/^\\s*(?:[a-z0-9]+[^a-z0-9]+){0,3}' . $term_pattern . '(?![a-z])/i';
 		return (bool) preg_match( $pattern, (string) $title );
 	}
 
 	private static function has_term( $text, $term ) {
-		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
-		if ( ! $words ) {
+		$term_pattern = self::term_pattern( $term );
+		if ( '' === $term_pattern ) {
 			return false;
 		}
-		$last = array_pop( $words );
-		$words[] = preg_quote( $last, '/' ) . 's?';
-		$pattern = '/(?<![a-z])' . implode( '[\\s_-]+', $words ) . '(?![a-z])/i';
+		$pattern = '/(?<![a-z])' . $term_pattern . '(?![a-z])/i';
 		return (bool) preg_match( $pattern, (string) $text );
 	}
 
 	private static function term_count( $text, $term ) {
-		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
-		if ( ! $words ) {
+		$term_pattern = self::term_pattern( $term );
+		if ( '' === $term_pattern ) {
 			return 0;
 		}
-		$last = array_pop( $words );
-		$words[] = preg_quote( $last, '/' ) . 's?';
-		$pattern = '/(?<![a-z])' . implode( '[\\s_-]+', $words ) . '(?![a-z])/i';
+		$pattern = '/(?<![a-z])' . $term_pattern . '(?![a-z])/i';
 		return preg_match_all( $pattern, (string) $text, $matches );
+	}
+
+	private static function term_pattern( $term ) {
+		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! $words ) {
+			return '';
+		}
+		$last = array_pop( $words );
+		$words = array_map( function ( $word ) { return preg_quote( $word, '/' ); }, $words );
+		if ( strlen( $last ) > 1 && 'y' === substr( $last, -1 ) ) {
+			$last_pattern = preg_quote( substr( $last, 0, -1 ), '/' ) . '(?:y|ies)';
+		} elseif ( 'o' === substr( $last, -1 ) ) {
+			$last_pattern = preg_quote( $last, '/' ) . '(?:e?s?)';
+		} else {
+			$last_pattern = preg_quote( $last, '/' ) . 's?';
+		}
+		$words[] = $last_pattern;
+		return implode( '[\\s_-]+', $words );
 	}
 
 	private static function ingredients( $meal ) {

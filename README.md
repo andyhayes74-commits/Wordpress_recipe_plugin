@@ -8,11 +8,12 @@ The plugin helps visitors find practical recipes for surplus ingredients, then a
 
 | Version | Branch | Status |
 | --- | --- | --- |
-| v1.3.3 | `v1.3.3-mealdb-reliability` | Current release candidate. Improves MealDB matching speed and provides a safe local fallback when AI is unavailable. |
+| v1.3.4 | `v1.3.4-search-normalisation` | Current release candidate. Fixes singular/plural ingredient matching and keeps title-led recipes visible after AI ranking. |
+| v1.3.3 | `v1.3.3-mealdb-reliability` | Earlier MealDB reliability candidate. |
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.3.zip](releases/marcham-recipe-plugin-v1.3.3.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.4.zip](releases/marcham-recipe-plugin-v1.3.4.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -61,7 +62,13 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.3.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.4.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.4: Search normalisation and complete title matches
+
+- Singular and plural ingredient forms now share one search term: `potato` and `potatoes`, for example, are evaluated together.
+- Title-led dishes remain primary even when the ingredient appears after up to three descriptive words, such as *Spicy North African Potato Salad*.
+- The AI can still rank matches, but it can no longer hide clear title-led primary matches. These remain in the main results instead of being demoted to “other recipes”.
 
 ## v1.3.3: MealDB reliability and fallback
 

@@ -92,6 +92,11 @@ expect( 'primary' !== $carrot_side['match_band'], 'A side carrot ingredient is n
 expect( 'primary' === $carrot_beef['match_band'], 'Carrot and beef title can satisfy both search terms' );
 $fallback = invoke( 'deterministic_result_ids', array( array( 'id' => 1, 'match_band' => 'primary' ), array( 'id' => 2, 'match_band' => 'secondary' ), array( 'id' => 3, 'match_band' => 'incidental' ) ) );
 expect( $fallback['recipe_ids'] === array( 1 ) && $fallback['other_recipe_ids'] === array( 2 ), 'Local fallback preserves strong and secondary matches' );
+expect( 'potato' === invoke_mealdb( 'canonical_term', 'Potatoes' ), 'Potatoes normalises to potato' );
+$potato_salad = invoke_mealdb( 'score_candidate', array( 'title' => 'Spicy North African Potato Salad', 'ingredients' => array( '500 g potatoes', '1 onion', '1 tbsp oil', 'lemon juice' ), 'method' => array( 'Boil the potatoes and dress the salad.' ) ), array( 'potato' ) );
+expect( 'primary' === $potato_salad['match_band'], 'Potato-led title remains a primary candidate' );
+$promoted = invoke( 'ensure_title_led_results', array( 'recipe_ids' => array( 2 ), 'other_recipe_ids' => array( 1, 3 ) ), array( array( 'id' => 1, 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array( 'potato' ) ), array( 'id' => 2, 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ), array( 'id' => 3, 'match_band' => 'secondary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ) ) );
+expect( $promoted['recipe_ids'] === array( 1, 2 ) && $promoted['other_recipe_ids'] === array( 3 ), 'Title-led primary candidates are retained after AI ranking' );
 $carrot_interpretation = array( 'ingredients' => array( 'Carrot' ), 'residual' => array(), 'terms' => array( 'carrot' ) );
 $beef_interpretation = array( 'ingredients' => array( 'Beef' ), 'residual' => array(), 'terms' => array( 'beef' ) );
 $response = decision_response( $empty );
