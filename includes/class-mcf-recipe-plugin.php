@@ -200,7 +200,19 @@ class MCF_Recipe_Plugin {
 			</div>
 			<div class="mcf-recipe-status" role="status" aria-live="polite"></div>
 			<div class="mcf-recipe-search-progress" data-mcf-search-progress role="status" aria-live="polite" hidden>
-				<span class="mcf-recipe-search-progress__spinner" aria-hidden="true"></span>
+				<span class="mcf-recipe-search-progress__vegetable-loader" aria-hidden="true">
+					<span class="mcf-recipe-search-progress__vegetable-orbit">
+						<span class="mcf-recipe-search-progress__vegetable mcf-recipe-search-progress__vegetable--carrot">
+							<svg viewBox="0 0 24 24" focusable="false"><path fill="#236c41" d="M11.5 7.1C8.7 5.2 8.7 2.6 9.8 1.1c2.7 1.2 3.2 3.9 1.7 6Zm2.4.6c.3-2.7 2.1-4.4 4.1-4.5.6 2.7-1.2 4.9-4.1 4.5Z"/><path fill="#f68f39" d="M11.3 8.2c1.8.3 4.4 1.6 5 3.6.7 2.4-2.3 8.1-5.8 10.4-1.4.9-3.4-.4-3.1-2 .8-4.2 2.1-9.3 3.9-12Z"/><path fill="#d56f28" d="M9.8 17.5c1.4-.3 3.1-1.1 4.6-2.2-.9 1.7-2.3 3.5-3.9 4.6-.6.4-1.3-.1-.8-2.4Z"/></svg>
+						</span>
+						<span class="mcf-recipe-search-progress__vegetable mcf-recipe-search-progress__vegetable--broccoli">
+							<svg viewBox="0 0 24 24" focusable="false"><path fill="#78a64a" d="M10.1 12.3h4l1.2 9.1H9l1.1-9.1Z"/><path fill="#236c41" d="M7.3 13.3a4 4 0 0 1-1.1-7.8 4.4 4.4 0 0 1 8.2-1.3 3.8 3.8 0 0 1 4.9 5.4 3.4 3.4 0 0 1-2.9 5.5H7.3a.9.9 0 1 1 0-1.8Z"/><path fill="#aeb35b" d="M8.3 8.5a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8Zm4.5-.6a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8Zm3 3.1a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8Z"/></svg>
+						</span>
+						<span class="mcf-recipe-search-progress__vegetable mcf-recipe-search-progress__vegetable--pepper">
+							<svg viewBox="0 0 24 24" focusable="false"><path fill="#236c41" d="M12.3 5.5c-.2-2 .5-3.4 2.4-4.4.6 2.1-.4 4-2.4 4.4Z"/><path fill="#f68f39" d="M12 6.1c4.6-2.4 8 1.6 6.4 7.3-1.4 5-4.1 8.7-6.4 9.4-2.3-.7-5-4.4-6.4-9.4C4 7.7 7.4 3.7 12 6.1Z"/><path fill="#e56f2f" d="M12 7.2v14.7c2.3-.7 4.3-4.2 5.3-8.3 1.1-4.6-1.3-7.4-5.3-6.4Z"/><path fill="#fff4de" d="M11.2 8.1c-2.1.5-3.6 2.4-2.8 5.1.2.6.8.9 1.2.4.5-1.6 1-3.4 1.6-5.5Z" opacity=".7"/></svg>
+						</span>
+					</span>
+				</span>
 				<span><strong data-mcf-search-progress-text></strong><small data-mcf-search-progress-detail></small></span>
 			</div>
 			<div class="mcf-recipe-grid" data-mcf-recipe-grid></div>

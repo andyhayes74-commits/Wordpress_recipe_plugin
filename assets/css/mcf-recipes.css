@@ -353,15 +353,64 @@
 	font-size: .84rem;
 }
 
-.mcf-recipe-search-progress__spinner {
-	box-sizing: border-box;
-	width: 22px;
-	height: 22px;
-	flex: 0 0 22px;
-	border: 3px solid rgba(35, 108, 65, .22);
-	border-top-color: var(--mcf-orange);
+.mcf-recipe-search-progress__vegetable-loader {
+	position: relative;
+	width: 52px;
+	height: 52px;
+	flex: 0 0 52px;
+}
+
+.mcf-recipe-search-progress__vegetable-orbit {
+	position: absolute;
+	inset: 0;
+	animation: mcf-recipe-vegetable-orbit 3.2s linear infinite;
+}
+
+.mcf-recipe-search-progress__vegetable {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 21px;
+	height: 21px;
+	margin: -10.5px;
+	transform-origin: 10.5px 10.5px;
+}
+
+.mcf-recipe-search-progress__vegetable::before {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 18px;
+	height: 18px;
 	border-radius: 50%;
-	animation: mcf-recipe-spin .8s linear infinite;
+	background: #fffaf0;
+	box-shadow: 0 2px 5px rgba(23, 61, 39, .14);
+	transform: translate(-50%, -50%);
+}
+
+.mcf-recipe-search-progress__vegetable svg {
+	position: relative;
+	display: block;
+	width: 21px;
+	height: 21px;
+	transform: rotate(var(--mcf-vegetable-upright, 0deg));
+	animation: mcf-recipe-vegetable-counter-orbit 3.2s linear infinite;
+}
+
+.mcf-recipe-search-progress__vegetable--carrot {
+	--mcf-vegetable-upright: 0deg;
+	transform: rotate(0deg) translateY(-18px);
+}
+
+.mcf-recipe-search-progress__vegetable--broccoli {
+	--mcf-vegetable-upright: -120deg;
+	transform: rotate(120deg) translateY(-18px);
+}
+
+.mcf-recipe-search-progress__vegetable--pepper {
+	--mcf-vegetable-upright: -240deg;
+	transform: rotate(240deg) translateY(-18px);
 }
 
 .mcf-recipe-library[aria-busy="true"] .mcf-recipe-search button {
@@ -369,8 +418,14 @@
 	opacity: .78;
 }
 
-@keyframes mcf-recipe-spin {
+
+@keyframes mcf-recipe-vegetable-orbit {
 	to { transform: rotate(360deg); }
+}
+
+@keyframes mcf-recipe-vegetable-counter-orbit {
+	from { transform: rotate(var(--mcf-vegetable-upright, 0deg)); }
+	to { transform: rotate(calc(var(--mcf-vegetable-upright, 0deg) - 360deg)); }
 }
 
 .mcf-recipe-grid {
@@ -691,9 +746,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.mcf-recipe-search-progress__spinner {
+	.mcf-recipe-search-progress__vegetable-orbit,
+	.mcf-recipe-search-progress__vegetable svg {
 		animation: none;
-		border-top-color: var(--mcf-green);
 	}
 }
 
