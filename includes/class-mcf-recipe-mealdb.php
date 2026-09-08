@@ -129,34 +129,29 @@ class MCF_Recipe_MealDB {
 
 	public static function find_candidates( $search, $cuisine = '' ) {
 		$interpretation = self::interpret_search( $search );
-		$ids = array();
-		if ( count( $interpretation['ingredients'] ) > 1 && 'v2' === self::version() ) {
-			$data = self::request( 'filter.php', array( 'i' => implode( ',', array_map( array( __CLASS__, 'term' ), $interpretation['ingredients'] ) ) ) );
-			$ids = self::meal_ids( $data );
-		} elseif ( $interpretation['ingredients'] ) {
-			foreach ( $interpretation['ingredients'] as $ingredient ) {
-				$data = self::request( 'filter.php', array( 'i' => self::term( $ingredient ) ) );
-				$current = self::meal_ids( $data );
-				$ids = $ids ? array_values( array_intersect( $ids, $current ) ) : $current;
-			}
-		}
-		if ( ! $ids && $interpretation['residual'] ) {
-			$data = self::request( 'search.php', array( 's' => implode( ' ', $interpretation['residual'] ) ) );
-			$ids = self::meal_ids( $data );
-		}
+
+		// TheMealDB ingredient filtering is useful, but it misses meals whose
+		// ingredient wording differs (for example, "carrots" versus "carrot").
+		// Title searches are deliberately placed first so carrot-led meals such
+		// as Moroccan Carrot Soup are always considered before incidental hits.
+		$title_ids      = self::title_candidate_ids( $search, $interpretation );
+		$ingredient_ids = self::ingredient_candidate_ids( $interpretation );
+		$ids            = array_values( array_unique( array_merge( $title_ids, $ingredient_ids ) ) );
+
 		if ( $cuisine && $ids ) {
 			$data = self::request( 'filter.php', array( 'a' => self::area_name( $cuisine ) ) );
 			$ids = array_values( array_intersect( $ids, self::meal_ids( $data ) ) );
 		}
+
+		// Title candidates come first, then the wider ingredient set. This
+		// prevents a long filter response from pushing an obvious title match
+		// out before it can be scored.
 		$ids = array_slice( array_values( array_unique( array_map( 'absint', $ids ) ) ), 0, 60 );
 		$candidates = array();
 		foreach ( $ids as $id ) {
 			$meal = self::meal( $id );
 			if ( is_array( $meal ) ) {
 				$candidate = self::score_candidate( self::candidate( $meal ), $interpretation['terms'] );
-				// A recipe that only contains the term incidentally is not a
-				// useful AI candidate. Keep primary and plausible secondary
-				// matches so the model can distinguish them, but remove noise.
 				if ( 'incidental' !== $candidate['match_band'] ) {
 					$candidates[] = $candidate;
 				}
@@ -171,6 +166,37 @@ class MCF_Recipe_MealDB {
 		$candidates = array_slice( $candidates, 0, 30 );
 		$ids = array_values( array_map( 'absint', wp_list_pluck( $candidates, 'id' ) ) );
 		return array( 'interpretation' => $interpretation, 'ids' => $ids, 'candidates' => $candidates );
+	}
+
+	private static function title_candidate_ids( $search, $interpretation ) {
+		$queries = array( sanitize_text_field( $search ) );
+		foreach ( array_merge( (array) $interpretation['ingredients'], (array) $interpretation['residual'] ) as $term ) {
+			$queries[] = sanitize_text_field( $term );
+		}
+		$ids = array();
+		foreach ( array_values( array_unique( array_filter( $queries ) ) ) as $query ) {
+			$data = self::request( 'search.php', array( 's' => $query ) );
+			$ids = array_merge( $ids, self::meal_ids( $data ) );
+		}
+		return array_values( array_unique( array_map( 'absint', $ids ) ) );
+	}
+
+	private static function ingredient_candidate_ids( $interpretation ) {
+		$ingredients = (array) $interpretation['ingredients'];
+		if ( ! $ingredients ) {
+			return array();
+		}
+		if ( count( $ingredients ) > 1 && 'v2' === self::version() ) {
+			$data = self::request( 'filter.php', array( 'i' => implode( ',', array_map( array( __CLASS__, 'term' ), $ingredients ) ) ) );
+			return self::meal_ids( $data );
+		}
+		$ids = array();
+		foreach ( $ingredients as $ingredient ) {
+			$data = self::request( 'filter.php', array( 'i' => self::term( $ingredient ) ) );
+			$current = self::meal_ids( $data );
+			$ids = $ids ? array_values( array_intersect( $ids, $current ) ) : $current;
+		}
+		return $ids;
 	}
 
 	public static function area_options() {
@@ -262,6 +288,7 @@ class MCF_Recipe_MealDB {
 
 	private static function score_term( $candidate, $term ) {
 		$title_match = self::has_term( $candidate['title'], $term );
+		$title_led_match = self::title_is_led_match( $candidate['title'], $term );
 		$ingredients = isset( $candidate['ingredients'] ) && is_array( $candidate['ingredients'] ) ? $candidate['ingredients'] : array();
 		$method = isset( $candidate['method'] ) && is_array( $candidate['method'] ) ? $candidate['method'] : array();
 		$matching_lines = array();
@@ -276,17 +303,21 @@ class MCF_Recipe_MealDB {
 		}
 		$ingredient_count = count( $ingredients );
 		$ratio = $ingredient_count ? count( $matching_lines ) / $ingredient_count : 0;
-		$score = $title_match ? 80 : 0;
+
+		// A term near the start of the dish name is a much stronger signal
+		// than a side item added late in a long title. "Moroccan Carrot Soup"
+		// is carrot-led; "French Onion Chicken with Roasted Carrots" is not.
+		$score = $title_led_match ? 100 : ( $title_match ? 30 : 0 );
 		$incidental_only = true;
 		foreach ( $matching_lines as $line ) {
-			$incidental = (bool) preg_match( '/\b(?:garnish|to taste|as needed|sprinkle|pinch|optional)\b/i', $line );
+			$incidental = (bool) preg_match( '/\\b(?:garnish|to taste|as needed|sprinkle|pinch|optional)\\b/i', $line );
 			if ( ! $incidental ) {
 				$incidental_only = false;
 			}
-			$line_has_quantity = (bool) preg_match( '/\b\d+(?:[.,]\d+)?\b|\b(?:small|medium|large|handful|bunch|can|tin|packet|pack|kg|g|ml|litre|liter|tbsp|tsp)\b/i', $line );
+			$line_has_quantity = (bool) preg_match( '/\\b\\d+(?:[.,]\\d+)?\\b|\\b(?:small|medium|large|handful|bunch|can|tin|packet|pack|kg|g|ml|litre|liter|tbsp|tsp)\\b/i', $line );
 			$score += $incidental ? 4 : ( $line_has_quantity ? 24 : 14 );
 		}
-		if ( $ratio >= 0.20 ) {
+		if ( $ratio >= 0.25 ) {
 			$score += 25;
 		} elseif ( $ratio >= 0.15 ) {
 			$score += 10;
@@ -297,13 +328,28 @@ class MCF_Recipe_MealDB {
 		if ( $incidental_only && ! $title_match ) {
 			$score = min( $score, 12 );
 		}
-		$primary = $title_match || $ratio >= 0.15 || ( $ratio >= 0.10 && $method_mentions >= 3 );
-		$secondary = $primary || $ratio >= 0.10 || $method_mentions >= 2;
+
+		$primary = $title_led_match || $ratio >= 0.25 || ( $ratio >= 0.15 && $method_mentions >= 3 );
+		$secondary = $primary || $title_match || $ratio >= 0.10 || $method_mentions >= 2;
 		return array(
 			'score'   => $score,
 			'matched' => $title_match || (bool) $matching_lines,
 			'band'    => $primary ? 'primary' : ( $secondary ? 'secondary' : 'incidental' ),
 		);
+	}
+
+	private static function title_is_led_match( $title, $term ) {
+		$words = preg_split( '/[^a-z0-9]+/i', strtolower( (string) $term ), -1, PREG_SPLIT_NO_EMPTY );
+		if ( ! $words ) {
+			return false;
+		}
+		$last = array_pop( $words );
+		$words[] = preg_quote( $last, '/' ) . 's?';
+		$term_pattern = implode( '[\\s_-]+', $words );
+		// Allow a short qualifier such as "Moroccan" or "Roasted", and a
+		// two-term title such as "Beef and Carrot Stew", but not a late side.
+		$pattern = '/^\\s*(?:[a-z0-9]+[\\s_-]+){0,2}' . $term_pattern . '(?![a-z])/i';
+		return (bool) preg_match( $pattern, (string) $title );
 	}
 
 	private static function has_term( $text, $term ) {

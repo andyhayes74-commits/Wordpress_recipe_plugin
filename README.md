@@ -1,4 +1,4 @@
-# WordPress Recipe Plugin v1.3.1
+# WordPress Recipe Plugin v1.3.2
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
@@ -50,7 +50,14 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.1.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.2.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.2: title-first MealDB matching
+
+- MealDB title searches are merged with ingredient-filter results before candidates are scored. This brings title-led meals such as Moroccan Carrot Soup into the shortlist even when the ingredient filter uses different wording.
+- Title candidates are considered before the wider ingredient list, so obvious carrot-led meals are not crowded out by incidental matches.
+- A term near the start of a short dish title is treated as title-led. A late side item in a longer title is only a weaker candidate unless the ingredient proportion and method also support it.
+- Multi-ingredient searches remain AND searches: every strong result must still be a primary match for every requested ingredient.
 
 ## v1.3.1: stricter primary-ingredient matching
 
