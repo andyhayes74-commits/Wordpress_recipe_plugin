@@ -32,6 +32,7 @@ class MCF_Recipe_Plugin {
 
 	public static function activate() {
 		self::register_content_types();
+		MCF_Recipe_Learning::activate();
 		flush_rewrite_rules();
 	}
 
@@ -138,8 +139,21 @@ class MCF_Recipe_Plugin {
 			'i18n'    => array(
 				'loading'                => $text['loading'],
 				'noResults'              => $text['no_results'],
+				'noFocusedResults'       => $text['no_focused_results'],
+				'otherMatches'           => $text['other_matches'],
+				'searchFallback'         => $text['search_fallback'],
+				'searchError'            => $text['search_error'],
+				'aiSearching'            => $text['ai_searching'],
+				'aiSearchingDetail'      => $text['ai_searching_detail'],
+				'aiSearchingSlow'        => $text['ai_searching_slow'],
+				'aiSearchError'          => $text['ai_search_error'],
+				'aiNotConfigured'         => $text['ai_not_configured'],
+				'mealdbError'            => $text['mealdb_error'],
+				'localSearchNotice'      => $text['local_search_notice'],
 				'resultsSingular'        => $text['results_singular'],
 				'resultsPlural'          => $text['results_plural'],
+				'showMoreFilters'        => $text['show_more_filters'],
+				'showLessFilters'        => $text['show_less_filters'],
 				'loadMore'               => $text['load_more'],
 				'viewRecipe'             => $text['view_recipe'],
 				'adaptRecipe'            => $text['adapt_recipe'],
@@ -165,24 +179,31 @@ class MCF_Recipe_Plugin {
 		?>
 		<section class="mcf-recipe-library" style="<?php echo esc_attr( MCF_Recipe_Admin::display_style() ); ?>" data-mcf-config="<?php echo esc_attr( wp_json_encode( $config ) ); ?>" aria-labelledby="mcf-recipe-library-title">
 			<div class="mcf-recipe-library__intro">
+				<div class="mcf-recipe-library__leaf-mark" aria-hidden="true"><i></i><i></i><i></i></div>
 				<p class="mcf-recipe-library__eyebrow"><?php echo esc_html( $text['eyebrow'] ); ?></p>
 				<h2 id="mcf-recipe-library-title"><?php echo esc_html( $text['intro_heading'] ); ?></h2>
 				<p><?php echo esc_html( $text['intro_text'] ); ?></p>
 			</div>
 			<form class="mcf-recipe-search" role="search">
 				<label class="screen-reader-text" for="mcf-recipe-search-input"><?php echo esc_html( $text['search_label'] ); ?></label>
+				<span class="mcf-recipe-search__icon" aria-hidden="true"></span>
 				<input id="mcf-recipe-search-input" type="search" name="search" placeholder="<?php echo esc_attr( $text['search_placeholder'] ); ?>" autocomplete="off">
-				<button type="submit"><?php echo esc_html( $text['search_button'] ); ?></button>
+				<button type="submit"><span class="mcf-recipe-search__button-icon" aria-hidden="true"></span><span class="screen-reader-text"><?php echo esc_html( $text['search_button'] ); ?></span></button>
 			</form>
 			<div class="mcf-recipe-filters" aria-label="<?php echo esc_attr( $text['filters_label'] ); ?>">
-				<label><?php echo esc_html( $text['cuisine_label'] ); ?>
-					<select data-mcf-filter="cuisine"><option value=""><?php echo esc_html( $text['all_cuisines'] ); ?></option></select>
-				</label>
-				<label><?php echo esc_html( $text['dietary_label'] ); ?>
-					<select data-mcf-filter="dietary"><option value=""><?php echo esc_html( $text['all_dietary'] ); ?></option></select>
-				</label>
+				<div class="mcf-recipe-filter-group">
+					<strong><?php echo esc_html( $text['cuisine_label'] ); ?></strong>
+					<div class="mcf-recipe-filter-chips" data-mcf-filter="cuisine">
+						<button type="button" class="is-active" data-mcf-filter-option="" aria-pressed="true"><?php echo esc_html( $text['all_cuisines'] ); ?></button>
+					</div>
+					<button type="button" class="mcf-recipe-filter-toggle" data-mcf-filter-toggle hidden aria-expanded="false"><?php echo esc_html( $text['show_more_filters'] ); ?></button>
+				</div>
 			</div>
 			<div class="mcf-recipe-status" role="status" aria-live="polite"></div>
+			<div class="mcf-recipe-search-progress" data-mcf-search-progress role="status" aria-live="polite" hidden>
+				<span class="mcf-recipe-search-progress__spinner" aria-hidden="true"></span>
+				<span><strong data-mcf-search-progress-text></strong><small data-mcf-search-progress-detail></small></span>
+			</div>
 			<div class="mcf-recipe-grid" data-mcf-recipe-grid></div>
 			<button class="mcf-recipe-load-more" type="button" hidden><?php echo esc_html( $text['load_more'] ); ?></button>
 			<div class="mcf-recipe-detail" data-mcf-recipe-detail hidden tabindex="-1" aria-live="polite"></div>
@@ -225,7 +246,7 @@ class MCF_Recipe_Plugin {
 			<p><label><?php esc_html_e( 'Cuisine', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[cuisine]" value="<?php echo esc_attr( implode( ', ', $cuisine ) ); ?>"></label></p>
 			<p><label><?php esc_html_e( 'Meal type', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[meal_type]" value="<?php echo esc_attr( $fields['meal_type'] ); ?>"></label></p>
 			<p><label><?php esc_html_e( 'Dietary labels', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[dietary]" value="<?php echo esc_attr( implode( ', ', $dietary ) ); ?>" placeholder="Vegetarian, Vegan"></label></p>
-			<p><label><?php esc_html_e( 'Search ingredients', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[search_terms]" value="<?php echo esc_attr( implode( ', ', $search ) ); ?>" placeholder="carrot, carrots"></label></p>
+			<p><label><?php esc_html_e( 'Main search terms', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[search_terms]" value="<?php echo esc_attr( implode( ', ', $search ) ); ?>" placeholder="carrot, beef, carrot soup"></label><span class="description"><?php esc_html_e( 'Add the ingredients or dish types that define the recipe. Do not add every incidental ingredient or garnish.', 'marcham-recipe-plugin' ); ?></span></p>
 			<p><label><?php esc_html_e( 'Preparation time', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[prep_time]" value="<?php echo esc_attr( $fields['prep_time'] ); ?>" placeholder="15 mins"></label></p>
 			<p><label><?php esc_html_e( 'Cooking time', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[cook_time]" value="<?php echo esc_attr( $fields['cook_time'] ); ?>" placeholder="30 mins"></label></p>
 			<p><label><?php esc_html_e( 'Servings', 'marcham-recipe-plugin' ); ?><br><input class="widefat" type="text" name="mcf_recipe[servings]" value="<?php echo esc_attr( $fields['servings'] ); ?>"></label></p>

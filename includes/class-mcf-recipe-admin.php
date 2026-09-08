@@ -18,7 +18,9 @@ class MCF_Recipe_Admin {
 	public static function defaults() {
 		return array(
 			'openai_api_key' => '',
-			'openai_model'   => 'gpt-5-mini',
+			'openai_model'   => 'gpt-4o-mini',
+			'themealdb_api_key' => '',
+			'debug_search'   => false,
 			'appearance'     => self::appearance_defaults(),
 			'text'           => self::text_defaults(),
 		);
@@ -56,12 +58,25 @@ class MCF_Recipe_Admin {
 			'search_placeholder'      => 'What ingredient do you have?',
 			'search_button'           => 'Search',
 			'filters_label'           => 'Recipe filters',
-			'cuisine_label'           => 'Cuisine',
+			'cuisine_label'           => 'Browse by cuisine',
 			'all_cuisines'            => 'All cuisines',
-			'dietary_label'           => 'Dietary',
+			'dietary_label'           => 'Browse by dietary',
 			'all_dietary'             => 'All dietary types',
+			'show_more_filters'       => 'Show more',
+			'show_less_filters'       => 'Show less',
 			'loading'                 => 'Loading recipes…',
 			'no_results'              => 'No recipes matched those choices.',
+			'no_focused_results'      => 'No recipes focused on your search ingredients were found.',
+			'other_matches'           => 'Other recipes containing your ingredients',
+			'search_fallback'         => 'AI search is temporarily unavailable. Showing title and main-ingredient matches.',
+			'search_error'            => 'Recipes could not be loaded. Please try again.',
+			'ai_searching'            => 'Finding recipes that use your ingredients…',
+			'ai_searching_detail'     => 'Checking which dishes make the best use of them…',
+			'ai_searching_slow'       => 'Still matching your ingredients — nearly there…',
+			'ai_search_error'         => 'We could not complete the AI recipe search. Please try again.',
+			'local_search_notice'     => 'AI search is not configured. Showing title and main-ingredient matches.',
+			'ai_not_configured'       => 'AI recipe matching is not configured yet. Please ask the site administrator to add the OpenAI key.',
+			'mealdb_error'            => 'The recipe service could not be reached. Please try again.',
 			'results_singular'        => 'recipe found',
 			'results_plural'          => 'recipes found',
 			'load_more'               => 'Load more recipes',
@@ -141,6 +156,12 @@ class MCF_Recipe_Admin {
 		return implode( ';', $output );
 	}
 
+	public static function debug_field() {
+		echo '<label><input type="checkbox" name="' . esc_attr( self::OPTION ) . '[debug_search]" value="1" ' . checked( ! empty( self::settings()['debug_search'] ), true, false ) . '> Enable search debug logging</label>';
+		echo '<p class="description">Records search text and technical outcomes for the latest 50 searches, for up to 24 hours. Administrator access only; no API keys or raw API responses. Turn off after testing.</p>';
+		echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mcf-recipe-debug' ) ) . '">View search diagnostics</a></p>';
+	}
+
 	public static function get_openai_key() {
 		$settings = self::settings();
 		return isset( $settings['openai_api_key'] ) ? trim( (string) $settings['openai_api_key'] ) : '';
@@ -149,6 +170,19 @@ class MCF_Recipe_Admin {
 	public static function get_openai_model() {
 		$settings = self::settings();
 		return ! empty( $settings['openai_model'] ) ? sanitize_text_field( $settings['openai_model'] ) : self::defaults()['openai_model'];
+	}
+
+	public static function get_mealdb_key() {
+		$settings = self::settings();
+		return isset( $settings['themealdb_api_key'] ) ? trim( (string) $settings['themealdb_api_key'] ) : '';
+	}
+
+	public static function maybe_upgrade() {
+		$settings = get_option( self::OPTION, array() );
+		if ( is_array( $settings ) && isset( $settings['openai_model'] ) && 'gpt-5-mini' === $settings['openai_model'] ) {
+			$settings['openai_model'] = 'gpt-4o-mini';
+			update_option( self::OPTION, $settings, false );
+		}
 	}
 
 	public static function menu() {
@@ -190,9 +224,9 @@ class MCF_Recipe_Admin {
 		);
 		add_settings_section(
 			'mcf_recipe_ai_section',
-			__( 'AI recipe adaptation', 'marcham-recipe-plugin' ),
+			__( 'AI recipe search and adaptation', 'marcham-recipe-plugin' ),
 			function () {
-				echo '<p>' . esc_html__( 'The key is used only by the server when a visitor requests an adaptation. It is never sent to the browser.', 'marcham-recipe-plugin' ) . '</p>';
+				echo '<p>' . esc_html__( 'OpenAI assesses whether TheMealDB recipes are genuinely useful for the surplus ingredients being searched. Both API keys are used only by the server and are never sent to the browser. TheMealDB key “1” is suitable for development; use a supporter key for the public multi-ingredient API.', 'marcham-recipe-plugin' ) . '</p>';
 			},
 			'mcf-recipe-settings'
 		);
@@ -210,6 +244,8 @@ class MCF_Recipe_Admin {
 			'mcf-recipe-settings',
 			'mcf_recipe_ai_section'
 		);
+		add_settings_field( 'themealdb_api_key', 'TheMealDB API key', array( __CLASS__, 'mealdb_key_field' ), 'mcf-recipe-settings', 'mcf_recipe_ai_section' );
+		add_settings_field( 'debug_search', 'Search debug logging', array( __CLASS__, 'debug_field' ), 'mcf-recipe-settings', 'mcf_recipe_ai_section' );
 		add_settings_section(
 			'mcf_recipe_appearance_section',
 			__( 'Recipe library appearance', 'marcham-recipe-plugin' ),
@@ -246,6 +282,7 @@ class MCF_Recipe_Admin {
 		$current = self::settings();
 		$input   = is_array( $input ) ? $input : array();
 		$key     = isset( $input['openai_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $input['openai_api_key'] ) : '';
+		$mealdb_key = isset( $input['themealdb_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $input['themealdb_api_key'] ) : '';
 		$appearance_input = isset( $input['appearance'] ) && is_array( $input['appearance'] ) ? $input['appearance'] : array();
 		$text_input       = isset( $input['text'] ) && is_array( $input['text'] ) ? $input['text'] : array();
 		$appearance       = self::sanitize_appearance( $appearance_input, $current['appearance'] );
@@ -253,7 +290,9 @@ class MCF_Recipe_Admin {
 
 		return array(
 			'openai_api_key' => '' !== trim( $key ) ? sanitize_text_field( $key ) : $current['openai_api_key'],
+			'debug_search'   => ! empty( $input['debug_search'] ),
 			'openai_model'   => isset( $input['openai_model'] ) ? sanitize_text_field( $input['openai_model'] ) : self::defaults()['openai_model'],
+			'themealdb_api_key' => '' !== trim( $mealdb_key ) ? sanitize_text_field( $mealdb_key ) : $current['themealdb_api_key'],
 			'appearance'     => $appearance,
 			'text'           => $text,
 		);
@@ -308,13 +347,15 @@ class MCF_Recipe_Admin {
 	public static function text_fields() {
 		$text = self::settings()['text'];
 		$groups = array(
+			'Search relevance messages' => array( 'no_focused_results', 'other_matches', 'search_fallback', 'search_error', 'ai_searching', 'ai_searching_detail', 'ai_searching_slow', 'ai_search_error', 'local_search_notice', 'ai_not_configured', 'mealdb_error' ),
 			'Library introduction' => array( 'eyebrow', 'intro_heading', 'intro_text' ),
-			'Search and filters' => array( 'search_label', 'search_placeholder', 'search_button', 'filters_label', 'cuisine_label', 'all_cuisines', 'dietary_label', 'all_dietary' ),
+			'Search and filters' => array( 'search_label', 'search_placeholder', 'search_button', 'filters_label', 'cuisine_label', 'all_cuisines', 'dietary_label', 'all_dietary', 'show_more_filters', 'show_less_filters' ),
 			'Cards and recipe details' => array( 'loading', 'no_results', 'results_singular', 'results_plural', 'load_more', 'view_recipe', 'back_to_recipes', 'recipe_badge', 'ai_adapted_badge', 'prep_label', 'cook_label', 'servings_label', 'ingredients_heading', 'method_heading', 'allergen_heading', 'storage_heading', 'adaptation_notes_heading' ),
 			'AI and print actions' => array( 'adapt_recipe', 'print_recipe', 'adapt_prompt', 'adapt_loading', 'adapt_error' ),
 		);
 		$labels = array(
-			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'adapt_recipe' => 'AI action button', 'print_recipe' => 'Print/PDF button', 'adapt_prompt' => 'AI prompt', 'adapt_loading' => 'AI loading message', 'adapt_error' => 'AI error message',
+			'no_focused_results' => 'No focused recipes', 'other_matches' => 'Other matches heading', 'search_fallback' => 'Legacy AI unavailable notice', 'search_error' => 'Search request error', 'ai_searching' => 'AI search message', 'ai_searching_detail' => 'AI search detail', 'ai_searching_slow' => 'AI search slow message', 'ai_search_error' => 'AI search error', 'local_search_notice' => 'Local-search notice', 'ai_not_configured' => 'AI not configured message', 'mealdb_error' => 'Recipe source error message',
+			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'show_more_filters' => 'Show more filters button', 'show_less_filters' => 'Show less filters button', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'adapt_recipe' => 'AI action button', 'print_recipe' => 'Print/PDF button', 'adapt_prompt' => 'AI prompt', 'adapt_loading' => 'AI loading message', 'adapt_error' => 'AI error message',
 		);
 		foreach ( $groups as $group => $keys ) {
 			echo '<h3>' . esc_html( $group ) . '</h3><div class="mcf-settings-fields">';
@@ -455,10 +496,17 @@ class MCF_Recipe_Admin {
 	public static function model_field() {
 		$settings = self::settings();
 		printf(
-			'<input class="regular-text" type="text" name="%s[openai_model]" value="%s" placeholder="gpt-5-mini">',
+			'<input class="regular-text" type="text" name="%s[openai_model]" value="%s" placeholder="gpt-4o-mini">',
 			esc_attr( self::OPTION ),
 			esc_attr( $settings['openai_model'] )
 		);
+	}
+
+	public static function mealdb_key_field() {
+		$settings = self::settings();
+		$value = $settings['themealdb_api_key'] ?? '';
+		printf( '<input class="regular-text" type="password" name="%s[themealdb_api_key]" value="" autocomplete="new-password" placeholder="%s">', esc_attr( self::OPTION ), esc_attr( $value ? 'Key saved — leave blank to keep it' : '1 for development or your supporter key' ) );
+		echo '<p class="description">The public recipe source. Key 1 is for development; a supporter key enables TheMealDB multi-ingredient API access. Leave blank to use development key 1.</p>';
 	}
 
 	public static function import_page() {
