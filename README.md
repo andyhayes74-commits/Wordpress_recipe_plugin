@@ -2,13 +2,14 @@
 
 A WordPress recipe-library plugin for the Marcham Community Fridge website.
 
-The plugin helps visitors find practical recipes for surplus ingredients from TheMealDB and links visitors to the original source where one is available.
+The plugin helps visitors find practical recipes for surplus ingredients from switchable recipe providers and links visitors to the original source where one is available.
 
 ## Release status
 
 | Version | Branch | Status |
 | --- | --- | --- |
-| v1.3.7 | `v1.3.7-recipe-source-links` | Current release candidate. Replaces visitor AI modification with verified source links. |
+| v1.3.8 | `v1.3.8-spoonacular-providers` | Current release candidate. Adds secure Spoonacular integration and provider enable/disable switches. |
+| v1.3.7 | `v1.3.7-recipe-source-links` | Earlier source-link candidate. Replaces visitor AI modification with verified source links. |
 | v1.3.6 | `v1.3.6-mobile-detail-scroll` | Current release candidate. Aligns the selected recipe panel at the top of the viewport on mobile. |
 | v1.3.5 | `v1.3.5-popular-browse` | Current release candidate. Sorts the initial browse page by real visitor popularity, with a varied fallback. |
 | v1.3.4 | `v1.3.4-search-normalisation` | Earlier search-normalisation candidate. |
@@ -16,7 +17,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from Th
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.3.7.zip](releases/marcham-recipe-plugin-v1.3.7.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.3.8.zip](releases/marcham-recipe-plugin-v1.3.8.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -27,9 +28,9 @@ The first working version includes:
 - Admin recipe editing with draft, pending-review and published states
 - CSV import with optional image URL download into the Media Library
 - Elementor-compatible [mcf_recipes] shortcode
-- Searchable MealDB recipe cards with cuisine filters
+- Searchable TheMealDB or Spoonacular recipe cards with cuisine filters
 - In-page recipe detail panel
-- Original-recipe source link, with a TheMealDB page fallback
+- Original-recipe source link, with a provider page fallback
 - Browser print / save-as-PDF output for the selected recipe
 - Settings-based typography, colours, spacing and corner-radius controls
 - Editable visitor-facing wording for the complete recipe-library interface
@@ -46,15 +47,15 @@ The first working version includes:
 - Two-column recipe-card presentation on larger screens with a compact, single-column mobile layout
 - Selected-recipe panel styled as an in-page recipe feature with a prominent image, selected badge and action buttons
 - Cuisine choices shown with the five most-used choices first and the rest expandable
-- Relevance-ranked ingredient search using TheMealDB candidates, ingredient meaning, recipe titles and method text rather than every incidental word
+- Relevance-ranked ingredient search using the active provider's candidates, ingredient meaning, recipe titles and method text rather than every incidental word
 - Multi-term ingredient searches use an AND-style match, so “carrot beef” favours recipes matching both terms
 - Dynamic, server-side OpenAI relevance search with persistent, reversible learned decisions
 - Search progress feedback while AI is checking recipes, including a slower-search message
 - Learned-search administration screen and opt-in diagnostics for investigating relevance and timing
-- TheMealDB-backed public recipe source, with local learning records keyed to external meal IDs
+- Switchable public recipe providers, with local learning records keyed to provider-specific recipe IDs
 - Suitability-aware AI ranking for surplus ingredients, including stricter multi-ingredient matching
 - Query-scoped and global recipe click tracking, with popularity used only inside AI-approved result groups
-- Optional TheMealDB API key in Settings; key `1` is retained as the development default
+- Enable/disable switches for TheMealDB and Spoonacular, with server-only API-key fields
 - Deterministic primary/secondary/incidental match bands remove noisy candidates before AI ranking
 - AI-selected strong results are constrained to deterministic primary matches; weaker selections are demoted or discarded
 - Diagnostics show each candidate's match band, score and matched terms
@@ -65,7 +66,15 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.7.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.3.8.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.3.8: Spoonacular provider and provider controls
+
+- **Recipe Library → Settings → Recipe providers** now includes switches for TheMealDB and Spoonacular.
+- Spoonacular is disabled by default, so updating does not unexpectedly consume its API quota. Paste its API key into the password field and enable its switch to use it.
+- When both are enabled, Spoonacular is selected as the active provider because it can return richer recipe descriptions, ingredient lists and analysed instructions. Turn it off to return to TheMealDB immediately. If Spoonacular is enabled without a saved key, enabled TheMealDB remains the fallback.
+- Provider-specific IDs such as `mealdb:52965` and `spoonacular:716429` keep click popularity, saved AI decisions and diagnostics separate even if services reuse the same number.
+- The provider API key is used only from WordPress server requests, never exposed in the browser. No Spoonacular recipe content is copied into the learning tables.
 
 ## v1.3.7: Recipe source links
 
@@ -174,8 +183,9 @@ Build-environment verification for this release: JavaScript regression/syntax ch
 2. Activate Marcham Community Fridge Recipe Library.
 3. Open Recipe Library → Settings.
 4. Leave the existing OpenAI API key in place, or enter a replacement key, and choose the model. The default model is `gpt-4o-mini`. The key is stored in WordPress settings and is used only server-side; it is never sent to the browser.
-5. Optionally enter a TheMealDB supporter key. Leave it blank to use development key `1`; multi-ingredient searches then use the local intersection fallback.
-6. Keep existing local recipes until the MealDB version has passed staging checks. The CSV importer remains available for rollback/editorial use, but it does not populate public MealDB results.
+5. Under **Recipe providers**, keep **Enable TheMealDB** switched on for a no-key fallback. Optionally enter a TheMealDB supporter key; blank uses development key `1`.
+6. To use Spoonacular, paste its API key into **Spoonacular API key** and switch on **Enable Spoonacular**. With both switches on, Spoonacular is preferred; switch it off to roll back to TheMealDB. Do not put either provider key in Elementor, JavaScript or a public repository.
+7. Keep existing local recipes until the external-provider version has passed staging checks. The CSV importer remains available for rollback/editorial use, but it does not populate public provider results.
 7. Add [mcf_recipes] to an Elementor Shortcode widget.
 
 Open **Recipe Library → Settings** to change the public wording, font family, text sizes, weights, alignment, colours, backgrounds and corner radius. These settings apply to every `[mcf_recipes]` shortcode on the site.
@@ -260,7 +270,7 @@ An example file is included at examples/recipes-example.csv. The ingredients and
 
 ## Recipe source and AI use
 
-The recipe panel links to its original publisher when TheMealDB provides a source URL. Otherwise it links to that recipe's TheMealDB page. OpenAI is used only to rank a deterministic shortlist for the visitor's surplus-food search; it does not modify the visitor-facing recipe text.
+The recipe panel links to its original publisher whenever the active provider supplies a source URL. Otherwise it links to that provider's recipe page. OpenAI is used only to rank a deterministic shortlist for the visitor's surplus-food search; it does not modify the visitor-facing recipe text.
 
 ## PDF generation
 

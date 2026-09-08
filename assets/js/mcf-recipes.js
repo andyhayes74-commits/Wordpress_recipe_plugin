@@ -288,7 +288,9 @@
 			}
 			var sourceLabel = recipe.source_is_original
 				? (config.i18n.sourceRecipe || 'View original recipe')
-				: (config.i18n.mealdbRecipe || 'View on TheMealDB');
+				: (recipe.provider === 'spoonacular'
+					? (config.i18n.spoonacularRecipe || 'View on Spoonacular')
+					: (config.i18n.mealdbRecipe || 'View on TheMealDB'));
 			return '<div class="mcf-recipe-detail__toolbar">' +
 				'<button type="button" class="mcf-recipe-link" data-mcf-close>← ' + esc(config.i18n.backToRecipes || 'Back to recipes') + '</button>' +
 				'<span class="mcf-recipe-detail__badge">' + esc(recipe.ai_adapted ? (config.i18n.aiAdaptedBadge || 'AI-adapted') : (config.i18n.recipeBadge || 'Recipe')) + '</span>' +

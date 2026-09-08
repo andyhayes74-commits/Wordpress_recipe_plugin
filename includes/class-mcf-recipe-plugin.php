@@ -158,6 +158,7 @@ class MCF_Recipe_Plugin {
 				'viewRecipe'             => $text['view_recipe'],
 				'sourceRecipe'           => $text['source_recipe'],
 				'mealdbRecipe'           => $text['mealdb_recipe'],
+				'spoonacularRecipe'      => $text['spoonacular_recipe'],
 				'printRecipe'            => $text['print_recipe'],
 				'backToRecipes'          => $text['back_to_recipes'],
 				'recipeBadge'            => $text['recipe_badge'],

@@ -27,6 +27,13 @@ class MCF_Recipe_Plugin {
 		return array( 'title' => 'Carrot soup', 'description' => self::$description, 'search_terms' => array( 'carrot' ), 'ingredients' => array( '500 g carrots' ) );
 	}
 }
+class MCF_Recipe_Providers {
+	public static function normalise_id( $id ) {
+		$id = trim( (string) $id );
+		if ( preg_match( '/^(?:mealdb|spoonacular):\d+$/', $id ) ) { return $id; }
+		return ctype_digit( $id ) ? 'mealdb:' . $id : '';
+	}
+}
 $cache = array();
 $calls = 0;
 $response = array();
@@ -69,34 +76,34 @@ function reset_rate() {
 	}
 }
 $empty = array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array(), 'other_recipe_ids' => array() );
-$validation_candidates = array( array( 'id' => 1, 'match_band' => 'primary' ) );
+$validation_candidates = array( array( 'id' => 'mealdb:1', 'match_band' => 'primary' ) );
 $validated_empty = invoke( 'validate_search_decision', $empty, $validation_candidates );
 expect( $validated_empty['recipe_ids'] === array() && $validated_empty['other_recipe_ids'] === array() && $validated_empty['normalised_terms'] === array( 'carrot' ), 'Valid empty selection is success' );
 foreach ( array(
-	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 999 ), 'other_recipe_ids' => array() ),
-	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( '1' ), 'other_recipe_ids' => array() ),
-	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 1 ), 'other_recipe_ids' => array( 1 ) ),
+	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 'mealdb:999' ), 'other_recipe_ids' => array() ),
+	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 'spoonacular:1' ), 'other_recipe_ids' => array() ),
+	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 'mealdb:1' ), 'other_recipe_ids' => array( 'mealdb:1' ) ),
 	array( 'normalised_terms' => array( 'carrot' ), 'unmatched_terms' => array(), 'recipe_ids' => array( -1 ), 'other_recipe_ids' => array() ),
 	array( 'recipe_ids' => array() ),
 ) as $invalid ) {
 	expect( is_wp_error( invoke( 'validate_search_decision', $invalid, $validation_candidates ) ), 'Reject malformed, unknown or duplicate IDs' );
 }
-$candidates = array( array( 'id' => 1, 'title' => 'Carrot soup', 'description' => 'Uses plenty of carrots', 'main_search_terms' => array( 'carrot' ), 'ingredients' => array( '500 g carrots' ) ) );
-$banded = invoke( 'validate_search_decision', array( 'normalised_terms' => array( 'potato' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 2, 3 ), 'other_recipe_ids' => array( 1 ) ), array( array( 'id' => 1, 'match_band' => 'primary' ), array( 'id' => 2, 'match_band' => 'secondary' ), array( 'id' => 3, 'match_band' => 'incidental' ) ) );
-expect( $banded['recipe_ids'] === array() && $banded['other_recipe_ids'] === array( 1, 2 ), 'Deterministic match bands prevent weak primary results' );
+$candidates = array( array( 'id' => 'mealdb:1', 'title' => 'Carrot soup', 'description' => 'Uses plenty of carrots', 'main_search_terms' => array( 'carrot' ), 'ingredients' => array( '500 g carrots' ) ) );
+$banded = invoke( 'validate_search_decision', array( 'normalised_terms' => array( 'potato' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 'mealdb:2', 'mealdb:3' ), 'other_recipe_ids' => array( 'mealdb:1' ) ), array( array( 'id' => 'mealdb:1', 'match_band' => 'primary' ), array( 'id' => 'mealdb:2', 'match_band' => 'secondary' ), array( 'id' => 'mealdb:3', 'match_band' => 'incidental' ) ) );
+expect( $banded['recipe_ids'] === array() && $banded['other_recipe_ids'] === array( 'mealdb:1', 'mealdb:2' ), 'Deterministic match bands prevent weak primary results' );
 $carrot_soup = invoke_mealdb( 'score_candidate', array( 'title' => 'Moroccan Carrot Soup', 'ingredients' => array( '500 g carrots', '1 onion', '500 ml vegetable stock' ), 'method' => array( 'Cook the carrots until soft.', 'Blend the carrots with the stock.' ) ), array( 'carrot' ) );
 $carrot_side = invoke_mealdb( 'score_candidate', array( 'title' => 'Corned Beef and Cabbage', 'ingredients' => array( '500 g corned beef', '1 carrot', '1 small cabbage', '2 potatoes' ), 'method' => array( 'Simmer the vegetables with the beef.' ) ), array( 'carrot' ) );
 $carrot_beef = invoke_mealdb( 'score_candidate', array( 'title' => 'Beef and Carrot Stew', 'ingredients' => array( '500 g beef', '500 g carrots', '1 onion', '500 ml stock' ), 'method' => array( 'Brown the beef and carrots.', 'Simmer the beef and carrots in stock.' ) ), array( 'carrot', 'beef' ) );
 expect( 'primary' === $carrot_soup['match_band'], 'Carrot-led title is a primary candidate' );
 expect( 'primary' !== $carrot_side['match_band'], 'A side carrot ingredient is not a primary carrot match' );
 expect( 'primary' === $carrot_beef['match_band'], 'Carrot and beef title can satisfy both search terms' );
-$fallback = invoke( 'deterministic_result_ids', array( array( 'id' => 1, 'match_band' => 'primary' ), array( 'id' => 2, 'match_band' => 'secondary' ), array( 'id' => 3, 'match_band' => 'incidental' ) ) );
-expect( $fallback['recipe_ids'] === array( 1 ) && $fallback['other_recipe_ids'] === array( 2 ), 'Local fallback preserves strong and secondary matches' );
+$fallback = invoke( 'deterministic_result_ids', array( array( 'id' => 'mealdb:1', 'match_band' => 'primary' ), array( 'id' => 'mealdb:2', 'match_band' => 'secondary' ), array( 'id' => 'mealdb:3', 'match_band' => 'incidental' ) ) );
+expect( $fallback['recipe_ids'] === array( 'mealdb:1' ) && $fallback['other_recipe_ids'] === array( 'mealdb:2' ), 'Local fallback preserves strong and secondary matches' );
 expect( 'potato' === invoke_mealdb( 'canonical_term', 'Potatoes' ), 'Potatoes normalises to potato' );
 $potato_salad = invoke_mealdb( 'score_candidate', array( 'title' => 'Spicy North African Potato Salad', 'ingredients' => array( '500 g potatoes', '1 onion', '1 tbsp oil', 'lemon juice' ), 'method' => array( 'Boil the potatoes and dress the salad.' ) ), array( 'potato' ) );
 expect( 'primary' === $potato_salad['match_band'], 'Potato-led title remains a primary candidate' );
-$promoted = invoke( 'ensure_title_led_results', array( 'recipe_ids' => array( 2 ), 'other_recipe_ids' => array( 1, 3 ) ), array( array( 'id' => 1, 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array( 'potato' ) ), array( 'id' => 2, 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ), array( 'id' => 3, 'match_band' => 'secondary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ) ) );
-expect( $promoted['recipe_ids'] === array( 1, 2 ) && $promoted['other_recipe_ids'] === array( 3 ), 'Title-led primary candidates are retained after AI ranking' );
+$promoted = invoke( 'ensure_title_led_results', array( 'recipe_ids' => array( 'mealdb:2' ), 'other_recipe_ids' => array( 'mealdb:1', 'mealdb:3' ) ), array( array( 'id' => 'mealdb:1', 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array( 'potato' ) ), array( 'id' => 'mealdb:2', 'match_band' => 'primary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ), array( 'id' => 'mealdb:3', 'match_band' => 'secondary', 'matched_terms' => array( 'potato' ), 'title_led_terms' => array() ) ) );
+expect( $promoted['recipe_ids'] === array( 'mealdb:1', 'mealdb:2' ) && $promoted['other_recipe_ids'] === array( 'mealdb:3' ), 'Title-led primary candidates are retained after AI ranking' );
 $carrot_interpretation = array( 'ingredients' => array( 'Carrot' ), 'residual' => array(), 'terms' => array( 'carrot' ) );
 $beef_interpretation = array( 'ingredients' => array( 'Beef' ), 'residual' => array(), 'terms' => array( 'beef' ) );
 $response = decision_response( $empty );
@@ -118,11 +125,11 @@ $response = new WP_Error( 'timeout', 'Sensitive transport details' );
 $result = invoke( 'ai_rank_recipe_search', 'different search', $carrot_interpretation, $candidates );
 expect( is_wp_error( $result ) && $result->get_error_code() === 'transport_error', 'Transport failures remain distinct from empty success' );
 reset_rate();
-$response = decision_response( array( 'normalised_terms' => array( 'carrot', 'beef' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 1 ), 'other_recipe_ids' => array( 2 ) ) );
-$pair_candidates = array( $candidates[0], array( 'id' => 2, 'title' => 'Beef and carrot stew', 'description' => '', 'main_search_terms' => array( 'beef', 'carrot' ), 'ingredients' => array( 'beef', 'carrots' ) ) );
+$response = decision_response( array( 'normalised_terms' => array( 'carrot', 'beef' ), 'unmatched_terms' => array(), 'recipe_ids' => array( 'mealdb:1' ), 'other_recipe_ids' => array( 'mealdb:2' ) ) );
+$pair_candidates = array( $candidates[0], array( 'id' => 'mealdb:2', 'title' => 'Beef and carrot stew', 'description' => '', 'main_search_terms' => array( 'beef', 'carrot' ), 'ingredients' => array( 'beef', 'carrots' ) ) );
 $pair_interpretation = array( 'ingredients' => array( 'Carrot', 'Beef' ), 'residual' => array(), 'terms' => array( 'carrot', 'beef' ) );
 $result = invoke( 'ai_rank_recipe_search', 'carrots and beef', $pair_interpretation, $pair_candidates );
-expect( $result['recipe_ids'] === array( 1 ) && $result['other_recipe_ids'] === array( 2 ), 'Strong and secondary results separated' );
+expect( $result['recipe_ids'] === array( 'mealdb:1' ) && $result['other_recipe_ids'] === array( 'mealdb:2' ), 'Strong and secondary results separated' );
 MCF_Recipe_Debug::record( 'carrot', array() );
 expect( MCF_Recipe_Debug::entries() === array(), 'Logging disabled by default' );
 MCF_Recipe_Admin::$debug = true;

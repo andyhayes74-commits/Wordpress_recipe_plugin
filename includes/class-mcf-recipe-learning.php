@@ -2,11 +2,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-/** Stores AI decisions and popularity signals for external TheMealDB meals. */
+/** Stores AI decisions and popularity signals for external provider recipes. */
 class MCF_Recipe_Learning {
 	const OPTION_VERSION = 'mcf_recipe_learning_version';
-	const VERSION = '2.1';
-	const POLICY_VERSION = '3.3';
+	const VERSION = '2.2';
+	const POLICY_VERSION = '4.0';
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
@@ -55,7 +55,7 @@ class MCF_Recipe_Learning {
 
 	public static function record_click( $query_key, $meal_id, $meal_title ) {
 		global $wpdb;
-		$meal_id = preg_replace( '/[^0-9]/', '', (string) $meal_id );
+		$meal_id = self::recipe_id( $meal_id );
 		if ( '' === $meal_id ) { return; }
 		$now = current_time( 'mysql', true );
 		foreach ( array( substr( preg_replace( '/[^a-f0-9]/', '', (string) $query_key ), 0, 64 ), '*' ) as $scope ) {
@@ -68,7 +68,7 @@ class MCF_Recipe_Learning {
 
 	public static function popularity( $query_key, $ids ) {
 		global $wpdb;
-		$ids = array_values( array_filter( array_map( function ( $id ) { return preg_replace( '/[^0-9]/', '', (string) $id ); }, (array) $ids ) ) );
+		$ids = array_values( array_filter( array_map( array( __CLASS__, 'recipe_id' ), (array) $ids ) ) );
 		if ( ! $ids ) { return array(); }
 		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
 		$params = array_merge( array( $query_key, '*' ), $ids );
@@ -96,8 +96,12 @@ class MCF_Recipe_Learning {
 
 	private static function ids( $items ) {
 		if ( is_string( $items ) ) { $items = json_decode( $items, true ); }
-		$items = array_map( function ( $id ) { return preg_replace( '/[^0-9]/', '', (string) $id ); }, (array) $items );
-		return array_values( array_unique( array_filter( $items ) ) );
+		return array_values( array_unique( array_filter( array_map( array( __CLASS__, 'recipe_id' ), (array) $items ) ) ) );
+	}
+	private static function recipe_id( $id ) {
+		$id = trim( (string) $id );
+		if ( preg_match( '/^(?:mealdb|spoonacular):\d+$/', $id ) ) { return $id; }
+		return ctype_digit( $id ) ? 'mealdb:' . $id : '';
 	}
 	private static function strings( $json ) { $items = is_string( $json ) ? json_decode( $json, true ) : $json; return self::clean_strings( is_array( $items ) ? $items : array() ); }
 	private static function clean_strings( $items ) { $items = array_map( 'sanitize_text_field', (array) $items ); return array_values( array_unique( array_filter( array_map( 'strtolower', $items ) ) ) ); }
@@ -114,10 +118,10 @@ class MCF_Recipe_Learning {
 		global $wpdb;
 		$rows = $wpdb->get_results( 'SELECT * FROM ' . self::table() . ' ORDER BY last_used_at DESC LIMIT 100', ARRAY_A );
 		$popular = $wpdb->get_results( 'SELECT meal_id, meal_title, SUM(click_count) AS clicks FROM ' . self::clicks_table() . ' GROUP BY meal_id, meal_title ORDER BY clicks DESC LIMIT 20', ARRAY_A );
-		echo '<div class="wrap"><h1>Recipe search learning</h1><p>AI suitability decisions reference TheMealDB meal IDs. Click counts are tracked per search and globally, then used only to order recipes that are already suitable.</p>';
+		echo '<div class="wrap"><h1>Recipe search learning</h1><p>AI suitability decisions reference provider-specific recipe IDs. Click counts are tracked per search and globally, then used only to order recipes that are already suitable.</p>';
 		if ( isset( $_GET['cleared'] ) ) { echo '<div class="notice notice-success"><p>Learned searches and click counts cleared.</p></div>'; }
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mcf_clear_search_learning">'; wp_nonce_field( 'mcf_clear_search_learning' ); submit_button( 'Clear learned searches and popularity', 'delete' ); echo '</form>';
-		echo '<h2>Most-clicked meals</h2><table class="widefat striped"><thead><tr><th>Meal ID</th><th>Meal</th><th>Clicks</th></tr></thead><tbody>';
+		echo '<h2>Most-clicked recipes</h2><table class="widefat striped"><thead><tr><th>Recipe ID</th><th>Recipe</th><th>Clicks</th></tr></thead><tbody>';
 		foreach ( $popular as $row ) { echo '<tr><td>' . esc_html( $row['meal_id'] ) . '</td><td>' . esc_html( $row['meal_title'] ) . '</td><td>' . esc_html( $row['clicks'] ) . '</td></tr>'; }
 		echo '</tbody></table><h2>Learned search decisions</h2>';
 		if ( ! $rows ) { echo '<p>No learned searches yet.</p></div>'; return; }

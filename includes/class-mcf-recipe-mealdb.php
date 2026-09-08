@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /** Server-side TheMealDB client. Recipe content remains owned by TheMealDB. */
 class MCF_Recipe_MealDB {
+	const PROVIDER = 'mealdb';
 	const BASE_URL = 'https://www.themealdb.com/api/json/';
 	const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
@@ -52,6 +53,19 @@ class MCF_Recipe_MealDB {
 			return $data;
 		}
 		return isset( $data['meals'][0] ) && is_array( $data['meals'][0] ) ? $data['meals'][0] : null;
+	}
+
+	public static function recipe_id( $id ) {
+		$id = absint( $id );
+		return $id ? self::PROVIDER . ':' . $id : '';
+	}
+
+	public static function external_id( $id ) {
+		$id = (string) $id;
+		if ( 0 === strpos( $id, self::PROVIDER . ':' ) ) {
+			$id = substr( $id, strlen( self::PROVIDER ) + 1 );
+		}
+		return absint( $id );
 	}
 
 	public static function ingredient_names() {
@@ -172,7 +186,7 @@ class MCF_Recipe_MealDB {
 			return $a['match_score'] < $b['match_score'] ? 1 : -1;
 		} );
 		$candidates = array_slice( $candidates, 0, 30 );
-		$ids = array_values( array_map( 'absint', wp_list_pluck( $candidates, 'id' ) ) );
+		$ids = array_values( wp_list_pluck( $candidates, 'id' ) );
 		return array( 'interpretation' => $interpretation, 'ids' => $ids, 'candidates' => $candidates );
 	}
 
@@ -232,7 +246,7 @@ class MCF_Recipe_MealDB {
 
 	public static function browse_candidates( $preferred_ids = array(), $limit = 24 ) {
 		$limit = min( 24, max( 1, absint( $limit ) ) );
-		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'absint', (array) $preferred_ids ) ) ) ), 0, $limit );
+		$ids = array_slice( array_values( array_unique( array_filter( array_map( array( __CLASS__, 'external_id' ), (array) $preferred_ids ) ) ) ), 0, $limit );
 		if ( count( $ids ) < $limit ) {
 			$fallback_ids = array();
 			foreach ( array( 'Vegetarian', 'Beef', 'Chicken' ) as $category ) {
@@ -262,7 +276,7 @@ class MCF_Recipe_MealDB {
 	public static function candidate( $meal ) {
 		$method = MCF_Recipe_Plugin::normalise_method_lines( $meal['strInstructions'] ?? '' );
 		return array(
-			'id'          => absint( $meal['idMeal'] ),
+			'id'          => self::recipe_id( $meal['idMeal'] ?? 0 ),
 			'title'       => sanitize_text_field( $meal['strMeal'] ?? '' ),
 			'description' => sanitize_textarea_field( implode( ' ', array_slice( $method, 0, 2 ) ) ),
 			'ingredients' => self::ingredients( $meal ),
@@ -429,7 +443,7 @@ class MCF_Recipe_MealDB {
 			$description = substr( $description, 0, 317 ) . '…';
 		}
 		$recipe = array(
-			'id'          => $meal_id,
+			'id'          => self::recipe_id( $meal_id ),
 			'title'       => sanitize_text_field( $meal['strMeal'] ?? '' ),
 			'description' => $description ? $description : sanitize_textarea_field( $meal['strCategory'] ?? '' ) . ( ! empty( $meal['strArea'] ) ? ' · ' . sanitize_textarea_field( $meal['strArea'] ) : '' ),
 			'ingredients' => self::ingredients( $meal ),
@@ -448,6 +462,7 @@ class MCF_Recipe_MealDB {
 			'permalink'   => '',
 			'source_url'  => $original_source ? $original_source : 'https://www.themealdb.com/meal.php?c=' . $meal_id,
 			'source_is_original' => (bool) $original_source,
+			'provider' => self::PROVIDER,
 		);
 		return $recipe;
 	}

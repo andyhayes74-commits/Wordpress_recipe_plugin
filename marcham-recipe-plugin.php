@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Marcham Community Fridge Recipe Library
- * Description: Searchable recipe library with CSV import, relevance-ranked search, in-page recipe viewing and optional AI adaptation.
- * Version: 1.3.7
+ * Description: Searchable recipe library with CSV import, switchable recipe providers, relevance-ranked search and in-page recipe viewing.
+ * Version: 1.3.8
  * Author: Marcham Community Fridge
  * License: GPL-2.0-or-later
  * Text Domain: marcham-recipe-plugin
@@ -12,17 +12,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MCF_RECIPE_VERSION', '1.3.7' );
+define( 'MCF_RECIPE_VERSION', '1.3.8' );
 define( 'MCF_RECIPE_FILE', __FILE__ );
 define( 'MCF_RECIPE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MCF_RECIPE_URL', plugin_dir_url( __FILE__ ) );
 
 require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-plugin.php';
 require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-admin.php';
-require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-rest.php';
 require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-debug.php';
 require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-learning.php';
 require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-mealdb.php';
+require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-spoonacular.php';
+require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-providers.php';
+require_once MCF_RECIPE_PATH . 'includes/class-mcf-recipe-rest.php';
 
 register_activation_hook( __FILE__, array( 'MCF_Recipe_Plugin', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'MCF_Recipe_Plugin', 'deactivate' ) );

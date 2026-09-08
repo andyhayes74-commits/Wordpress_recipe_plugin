@@ -20,9 +20,18 @@ class MCF_Recipe_Admin {
 			'openai_api_key' => '',
 			'openai_model'   => 'gpt-4o-mini',
 			'themealdb_api_key' => '',
+			'providers'      => self::provider_defaults(),
 			'debug_search'   => false,
 			'appearance'     => self::appearance_defaults(),
 			'text'           => self::text_defaults(),
+		);
+	}
+
+	public static function provider_defaults() {
+		return array(
+			'mealdb_enabled'      => true,
+			'spoonacular_enabled' => false,
+			'spoonacular_api_key' => '',
 		);
 	}
 
@@ -94,6 +103,7 @@ class MCF_Recipe_Admin {
 			'adaptation_notes_heading'=> 'AI adaptation notes',
 			'source_recipe'           => 'View original recipe',
 			'mealdb_recipe'           => 'View on TheMealDB',
+			'spoonacular_recipe'      => 'View on Spoonacular',
 			'print_recipe'            => 'Print / save PDF',
 		);
 	}
@@ -102,6 +112,7 @@ class MCF_Recipe_Admin {
 		$settings = wp_parse_args( get_option( self::OPTION, array() ), self::defaults() );
 		$settings['appearance'] = wp_parse_args( isset( $settings['appearance'] ) && is_array( $settings['appearance'] ) ? $settings['appearance'] : array(), self::appearance_defaults() );
 		$settings['text']       = wp_parse_args( isset( $settings['text'] ) && is_array( $settings['text'] ) ? $settings['text'] : array(), self::text_defaults() );
+		$settings['providers']  = wp_parse_args( isset( $settings['providers'] ) && is_array( $settings['providers'] ) ? $settings['providers'] : array(), self::provider_defaults() );
 		return $settings;
 	}
 
@@ -175,6 +186,17 @@ class MCF_Recipe_Admin {
 		return isset( $settings['themealdb_api_key'] ) ? trim( (string) $settings['themealdb_api_key'] ) : '';
 	}
 
+	public static function get_spoonacular_key() {
+		$settings = self::settings();
+		return isset( $settings['providers']['spoonacular_api_key'] ) ? trim( (string) $settings['providers']['spoonacular_api_key'] ) : '';
+	}
+
+	public static function provider_enabled( $provider ) {
+		$provider = sanitize_key( $provider );
+		$settings = self::settings();
+		return ! empty( $settings['providers'][ $provider . '_enabled' ] );
+	}
+
 	public static function maybe_upgrade() {
 		$settings = get_option( self::OPTION, array() );
 		if ( is_array( $settings ) && isset( $settings['openai_model'] ) && 'gpt-5-mini' === $settings['openai_model'] ) {
@@ -222,9 +244,9 @@ class MCF_Recipe_Admin {
 		);
 		add_settings_section(
 			'mcf_recipe_ai_section',
-			__( 'AI recipe search and adaptation', 'marcham-recipe-plugin' ),
+			__( 'AI recipe search', 'marcham-recipe-plugin' ),
 			function () {
-				echo '<p>' . esc_html__( 'OpenAI assesses whether TheMealDB recipes are genuinely useful for the surplus ingredients being searched. Both API keys are used only by the server and are never sent to the browser. TheMealDB key “1” is suitable for development; use a supporter key for the public multi-ingredient API.', 'marcham-recipe-plugin' ) . '</p>';
+				echo '<p>' . esc_html__( 'OpenAI assesses whether the recipes returned by your enabled provider are genuinely useful for the surplus ingredients being searched. The OpenAI key is used only by the server and is never sent to the browser.', 'marcham-recipe-plugin' ) . '</p>';
 			},
 			'mcf-recipe-settings'
 		);
@@ -242,8 +264,17 @@ class MCF_Recipe_Admin {
 			'mcf-recipe-settings',
 			'mcf_recipe_ai_section'
 		);
-		add_settings_field( 'themealdb_api_key', 'TheMealDB API key', array( __CLASS__, 'mealdb_key_field' ), 'mcf-recipe-settings', 'mcf_recipe_ai_section' );
 		add_settings_field( 'debug_search', 'Search debug logging', array( __CLASS__, 'debug_field' ), 'mcf-recipe-settings', 'mcf_recipe_ai_section' );
+		add_settings_section(
+			'mcf_recipe_provider_section',
+			__( 'Recipe providers', 'marcham-recipe-plugin' ),
+			function () {
+				echo '<p>' . esc_html__( 'Choose which recipe services the public library may use. Spoonacular is preferred when both providers are enabled and its key has been saved. If it is switched on without a key, TheMealDB remains the fallback when enabled.', 'marcham-recipe-plugin' ) . '</p>';
+			},
+			'mcf-recipe-settings'
+		);
+		add_settings_field( 'providers', __( 'Provider connections', 'marcham-recipe-plugin' ), array( __CLASS__, 'provider_fields' ), 'mcf-recipe-settings', 'mcf_recipe_provider_section' );
+		add_settings_field( 'themealdb_api_key', 'TheMealDB API key', array( __CLASS__, 'mealdb_key_field' ), 'mcf-recipe-settings', 'mcf_recipe_provider_section' );
 		add_settings_section(
 			'mcf_recipe_appearance_section',
 			__( 'Recipe library appearance', 'marcham-recipe-plugin' ),
@@ -281,6 +312,8 @@ class MCF_Recipe_Admin {
 		$input   = is_array( $input ) ? $input : array();
 		$key     = isset( $input['openai_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $input['openai_api_key'] ) : '';
 		$mealdb_key = isset( $input['themealdb_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $input['themealdb_api_key'] ) : '';
+		$providers_input = isset( $input['providers'] ) && is_array( $input['providers'] ) ? $input['providers'] : array();
+		$spoonacular_key = isset( $providers_input['spoonacular_api_key'] ) ? preg_replace( '/[\r\n\t]/', '', (string) $providers_input['spoonacular_api_key'] ) : '';
 		$appearance_input = isset( $input['appearance'] ) && is_array( $input['appearance'] ) ? $input['appearance'] : array();
 		$text_input       = isset( $input['text'] ) && is_array( $input['text'] ) ? $input['text'] : array();
 		$appearance       = self::sanitize_appearance( $appearance_input, $current['appearance'] );
@@ -291,6 +324,11 @@ class MCF_Recipe_Admin {
 			'debug_search'   => ! empty( $input['debug_search'] ),
 			'openai_model'   => isset( $input['openai_model'] ) ? sanitize_text_field( $input['openai_model'] ) : self::defaults()['openai_model'],
 			'themealdb_api_key' => '' !== trim( $mealdb_key ) ? sanitize_text_field( $mealdb_key ) : $current['themealdb_api_key'],
+			'providers'      => array(
+				'mealdb_enabled'      => ! empty( $providers_input['mealdb_enabled'] ),
+				'spoonacular_enabled' => ! empty( $providers_input['spoonacular_enabled'] ),
+				'spoonacular_api_key' => '' !== trim( $spoonacular_key ) ? sanitize_text_field( $spoonacular_key ) : $current['providers']['spoonacular_api_key'],
+			),
 			'appearance'     => $appearance,
 			'text'           => $text,
 		);
@@ -349,11 +387,11 @@ class MCF_Recipe_Admin {
 			'Library introduction' => array( 'eyebrow', 'intro_heading', 'intro_text' ),
 			'Search and filters' => array( 'search_label', 'search_placeholder', 'search_button', 'filters_label', 'cuisine_label', 'all_cuisines', 'dietary_label', 'all_dietary', 'show_more_filters', 'show_less_filters' ),
 			'Cards and recipe details' => array( 'loading', 'no_results', 'results_singular', 'results_plural', 'load_more', 'view_recipe', 'back_to_recipes', 'recipe_badge', 'ai_adapted_badge', 'prep_label', 'cook_label', 'servings_label', 'ingredients_heading', 'method_heading', 'allergen_heading', 'storage_heading', 'adaptation_notes_heading' ),
-			'Source and print actions' => array( 'source_recipe', 'mealdb_recipe', 'print_recipe' ),
+			'Source and print actions' => array( 'source_recipe', 'mealdb_recipe', 'spoonacular_recipe', 'print_recipe' ),
 		);
 		$labels = array(
 			'no_focused_results' => 'No focused recipes', 'other_matches' => 'Other matches heading', 'search_fallback' => 'Legacy AI unavailable notice', 'search_error' => 'Search request error', 'ai_searching' => 'AI search message', 'ai_searching_detail' => 'AI search detail', 'ai_searching_slow' => 'AI search slow message', 'ai_search_error' => 'AI search error', 'local_search_notice' => 'Local-search notice', 'ai_not_configured' => 'AI not configured message', 'mealdb_error' => 'Recipe source error message',
-			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'show_more_filters' => 'Show more filters button', 'show_less_filters' => 'Show less filters button', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'source_recipe' => 'Original-source button', 'mealdb_recipe' => 'TheMealDB-source button', 'print_recipe' => 'Print/PDF button',
+			'eyebrow' => 'Eyebrow', 'intro_heading' => 'Main heading', 'intro_text' => 'Introduction', 'search_label' => 'Search accessibility label', 'search_placeholder' => 'Search placeholder', 'search_button' => 'Search button', 'filters_label' => 'Filters accessibility label', 'cuisine_label' => 'Cuisine label', 'all_cuisines' => 'All cuisines option', 'dietary_label' => 'Dietary label', 'all_dietary' => 'All dietary option', 'show_more_filters' => 'Show more filters button', 'show_less_filters' => 'Show less filters button', 'loading' => 'Loading message', 'no_results' => 'No results message', 'results_singular' => 'Single-result message', 'results_plural' => 'Multiple-results message', 'load_more' => 'Load more button', 'view_recipe' => 'View recipe button', 'back_to_recipes' => 'Back button', 'recipe_badge' => 'Recipe badge', 'ai_adapted_badge' => 'AI-adapted badge', 'prep_label' => 'Preparation label', 'cook_label' => 'Cooking label', 'servings_label' => 'Servings label', 'ingredients_heading' => 'Ingredients heading', 'method_heading' => 'Method heading', 'allergen_heading' => 'Allergen heading', 'storage_heading' => 'Storage heading', 'adaptation_notes_heading' => 'AI notes heading', 'source_recipe' => 'Original-source button', 'mealdb_recipe' => 'TheMealDB-source button', 'spoonacular_recipe' => 'Spoonacular-source button', 'print_recipe' => 'Print/PDF button',
 		);
 		foreach ( $groups as $group => $keys ) {
 			echo '<h3>' . esc_html( $group ) . '</h3><div class="mcf-settings-fields">';
@@ -504,7 +542,19 @@ class MCF_Recipe_Admin {
 		$settings = self::settings();
 		$value = $settings['themealdb_api_key'] ?? '';
 		printf( '<input class="regular-text" type="password" name="%s[themealdb_api_key]" value="" autocomplete="new-password" placeholder="%s">', esc_attr( self::OPTION ), esc_attr( $value ? 'Key saved — leave blank to keep it' : '1 for development or your supporter key' ) );
-		echo '<p class="description">The public recipe source. Key 1 is for development; a supporter key enables TheMealDB multi-ingredient API access. Leave blank to use development key 1.</p>';
+		echo '<p class="description">TheMealDB key. Key 1 is for development; a supporter key enables its multi-ingredient API access. Leave blank to use development key 1.</p>';
+	}
+
+	public static function provider_fields() {
+		$providers = self::settings()['providers'];
+		$key_saved = ! empty( $providers['spoonacular_api_key'] );
+		?>
+		<p><label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[providers][mealdb_enabled]" value="1" <?php checked( ! empty( $providers['mealdb_enabled'] ) ); ?>> <strong><?php esc_html_e( 'Enable TheMealDB', 'marcham-recipe-plugin' ); ?></strong></label><br><span class="description"><?php esc_html_e( 'Current provider. Keep this enabled for a no-key fallback and a quick rollback.', 'marcham-recipe-plugin' ); ?></span></p>
+		<p><label><input type="checkbox" name="<?php echo esc_attr( self::OPTION ); ?>[providers][spoonacular_enabled]" value="1" <?php checked( ! empty( $providers['spoonacular_enabled'] ) ); ?>> <strong><?php esc_html_e( 'Enable Spoonacular', 'marcham-recipe-plugin' ); ?></strong></label><br><span class="description"><?php esc_html_e( 'Preferred over TheMealDB whenever enabled and an API key is saved. It supplies richer descriptions, ingredients and instructions where available.', 'marcham-recipe-plugin' ); ?></span></p>
+		<p><label><strong><?php esc_html_e( 'Spoonacular API key', 'marcham-recipe-plugin' ); ?></strong><br><input class="regular-text" type="password" name="<?php echo esc_attr( self::OPTION ); ?>[providers][spoonacular_api_key]" value="" autocomplete="new-password" placeholder="<?php echo esc_attr( $key_saved ? __( 'Key saved — leave blank to keep it', 'marcham-recipe-plugin' ) : __( 'Paste the Spoonacular API key here', 'marcham-recipe-plugin' ) ); ?>"></label></p>
+		<?php if ( $key_saved ) : ?><p class="description mcf-key-status"><?php esc_html_e( 'A Spoonacular API key is saved. Leave the field blank to keep it, or enter a replacement.', 'marcham-recipe-plugin' ); ?></p><?php endif; ?>
+		<p class="description"><?php esc_html_e( 'At least one provider must be enabled. Provider keys stay on the server and are never sent to visitors.', 'marcham-recipe-plugin' ); ?></p>
+		<?php
 	}
 
 	public static function import_page() {

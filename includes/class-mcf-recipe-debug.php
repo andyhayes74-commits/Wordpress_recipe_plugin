@@ -40,7 +40,9 @@ class MCF_Recipe_Debug {
 			$entry[ $field ] = isset( $details[ $field ] ) ? absint( $details[ $field ] ) : 0;
 		}
 		foreach ( array( 'candidate_ids', 'result_ids', 'other_ids' ) as $field ) {
-			$entry[ $field ] = array_slice( array_map( 'absint', isset( $details[ $field ] ) ? $details[ $field ] : array() ), 0, 30 );
+			$values = isset( $details[ $field ] ) && is_array( $details[ $field ] ) ? $details[ $field ] : array();
+			$values = array_map( 'sanitize_text_field', $values );
+			$entry[ $field ] = array_slice( array_values( array_filter( $values, function ( $id ) { return (bool) preg_match( '/^(?:(?:mealdb|spoonacular):)?\d+$/', $id ); } ) ), 0, 30 );
 		}
 		foreach ( array( 'candidate_titles', 'result_titles', 'other_titles' ) as $field ) {
 			$values = isset( $details[ $field ] ) && is_array( $details[ $field ] ) ? $details[ $field ] : array();
