@@ -8,6 +8,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 
 | Version | Branch | Status |
 | --- | --- | --- |
+| v1.4.1 | `v1.4.1-compatible-pdf-archive` | Current release candidate. Repackages the branded-PDF release in the conservative ZIP format required by this WordPress host. |
 | v1.4.0 | `v1.4.0-branded-recipe-pdfs` | Current release candidate. Downloads a server-generated branded recipe PDF instead of opening the browser print UI. |
 | v1.3.13 | `v1.3.13-centred-vegetable-loader` | Current release candidate. Centres and enlarges the vegetable animation, with its text below. |
 | v1.3.12 | `v1.3.12-vegetable-loader` | Current release candidate. Replaces the generic loading spinner with an upright vegetable orbit. |
@@ -23,7 +24,7 @@ The plugin helps visitors find practical recipes for surplus ingredients from sw
 | v1.3.2 | `v1.3.2-title-first-matching` | Earlier title-first matching candidate. |
 | v1.3.1 | `main` | Previous baseline release. |
 
-For installation, use the purpose-built [marcham-recipe-plugin-v1.4.0.zip](releases/marcham-recipe-plugin-v1.4.0.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
+For installation, use the purpose-built [marcham-recipe-plugin-v1.4.1.zip](releases/marcham-recipe-plugin-v1.4.1.zip) release package. Do **not** use GitHub’s **Code → Download ZIP** archive: it uses the repository/branch folder name and WordPress may treat it as a different plugin rather than an update.
 
 
 ## Current MVP
@@ -72,7 +73,11 @@ This is an MVP. Recipes should be tested with a small CSV first and reviewed for
 
 This release keeps the same WordPress plugin identity as v0.1.0: the main file remains `marcham-recipe-plugin.php`, the plugin name remains **Marcham Community Fridge Recipe Library**, and the text domain remains `marcham-recipe-plugin`. The install ZIP also uses the stable `marcham-recipe-plugin/` folder, which is required for WordPress to recognise it as an update to the existing installation.
 
-Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.4.0.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+Back up the WordPress files and database first. In **Plugins → Add New Plugin → Upload Plugin**, upload `marcham-recipe-plugin-v1.4.1.zip` and choose **Replace current with uploaded** if WordPress presents that option. Do not use GitHub's **Code → Download ZIP** archive directly; use the plugin ZIP built for release. If WordPress offers only a new installation or reports that the destination already exists, cancel and do not activate a duplicate copy. Existing local recipes, settings and the settings-based OpenAI key are preserved. Purge the recipe page's LiteSpeed cache once after updating to load the new script/configuration.
+
+## v1.4.1: WordPress-compatible archive
+
+- The v1.4.0 plugin files are repackaged without extended ZIP metadata or compression, avoiding the `Incompatible Archive` validator issue on affected WordPress hosts.
 
 ## v1.4.0: Branded recipe PDF downloads
 
